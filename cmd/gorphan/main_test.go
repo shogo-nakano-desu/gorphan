@@ -61,6 +61,12 @@ func TestRun_ValidInput(t *testing.T) {
 	if !strings.Contains(stdout.String(), "graph nodes: 2") {
 		t.Fatalf("expected verbose graph output, got: %s", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), "reachable files: 2") {
+		t.Fatalf("expected reachable files count, got: %s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "orphan files: 0") {
+		t.Fatalf("expected orphan files count, got: %s", stdout.String())
+	}
 }
 
 func TestRun_InvalidFormat(t *testing.T) {
@@ -76,6 +82,23 @@ func TestRun_InvalidFormat(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "--format must be one of") {
 		t.Fatalf("expected format error message, got: %s", stderr.String())
+	}
+}
+
+func TestRun_RootExcludedByIgnore_Fails(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	mustWrite(t, root, "# root")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--ignore", "index.md"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("expected exit code 2, got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "root markdown file is not in scan result") {
+		t.Fatalf("expected root inventory error message, got: %s", stderr.String())
 	}
 }
 

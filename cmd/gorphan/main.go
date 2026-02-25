@@ -63,6 +63,11 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
+	analysis, err := graph.Analyze(linkGraph, cfg.Dir, files)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 2
+	}
 
 	if cfg.Verbose {
 		totalEdges := 0
@@ -78,6 +83,8 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "- scanned markdown files: %d\n", len(files))
 		fmt.Fprintf(stdout, "- graph nodes: %d\n", len(linkGraph.Adjacency))
 		fmt.Fprintf(stdout, "- graph edges: %d\n", totalEdges)
+		fmt.Fprintf(stdout, "- reachable files: %d\n", len(analysis.Reachable))
+		fmt.Fprintf(stdout, "- orphan files: %d\n", len(analysis.Orphans))
 	}
 
 	// Phase 4 only: graph construction is complete. Reachability and orphan reporting are next.

@@ -59,11 +59,11 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Build adjacency map `source -> []target`.
 
 ## Phase 5: Reachability and Orphan Detection
-- [ ] Traverse graph from root (DFS or BFS).
-- [ ] Build reachable set.
-- [ ] Compute orphan list as: `all_markdown_files - reachable`.
-- [ ] Sort orphan paths lexicographically.
-- [ ] Convert output paths to relative paths from scan directory.
+- [x] Traverse graph from root (DFS or BFS).
+- [x] Build reachable set.
+- [x] Compute orphan list as: `all_markdown_files - reachable`.
+- [x] Sort orphan paths lexicographically.
+- [x] Convert output paths to relative paths from scan directory.
 
 ## Phase 6: Output, Exit Codes, and UX
 - [ ] Text formatter:
