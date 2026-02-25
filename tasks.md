@@ -3,15 +3,15 @@
 This task list is derived from [plan.md](./plan.md) and is organized for implementation order.
 
 ## Phase 0: Project Bootstrap
-- [ ] Initialize Go module (`go mod init`).
-- [ ] Create baseline project structure:
-  - [ ] `cmd/gorphan/main.go`
-  - [ ] `internal/scanner/scanner.go`
-  - [ ] `internal/parser/parser.go`
-  - [ ] `internal/graph/graph.go`
-  - [ ] `internal/report/report.go`
-  - [ ] `testdata/`
-- [ ] Add basic `README.md` with temporary usage placeholder.
+- [x] Initialize Go module (`go mod init`).
+- [x] Create baseline project structure:
+  - [x] `cmd/gorphan/main.go`
+  - [x] `internal/scanner/scanner.go`
+  - [x] `internal/parser/parser.go`
+  - [x] `internal/graph/graph.go`
+  - [x] `internal/report/report.go`
+  - [x] `testdata/`
+- [x] Add basic `README.md` with temporary usage placeholder.
 
 ## Phase 1: CLI Skeleton and Validation
 - [ ] Implement CLI command `gorphan`.
