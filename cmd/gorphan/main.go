@@ -42,6 +42,11 @@ func main() {
 }
 
 func run(args []string, stdout io.Writer, stderr io.Writer) int {
+	writef := func(w io.Writer, format string, a ...any) error {
+		_, err := fmt.Fprintf(w, format, a...)
+		return err
+	}
+
 	cfg, err := parseArgs(args, stderr)
 	if err != nil {
 		return 2
@@ -54,7 +59,9 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		Ignore:     cfg.Ignore,
 	})
 	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
+		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+			return 2
+		}
 		return 2
 	}
 
@@ -65,12 +72,16 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		Extensions: extensions,
 	})
 	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
+		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+			return 2
+		}
 		return 2
 	}
 	analysis, err := graph.Analyze(linkGraph, cfg.Dir, files)
 	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
+		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+			return 2
+		}
 		return 2
 	}
 	graphText := ""
@@ -81,7 +92,9 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		graphText, err = graph.ExportMermaid(linkGraph, cfg.Dir)
 	}
 	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
+		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+			return 2
+		}
 		return 2
 	}
 
@@ -90,20 +103,48 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		for _, targets := range linkGraph.Adjacency {
 			totalEdges += len(targets)
 		}
-		fmt.Fprintf(stdout, "Validated inputs:\n")
-		fmt.Fprintf(stdout, "- root: %s\n", cfg.Root)
-		fmt.Fprintf(stdout, "- dir: %s\n", cfg.Dir)
-		fmt.Fprintf(stdout, "- ext: %s\n", cfg.Ext)
-		fmt.Fprintf(stdout, "- ignore: %v\n", cfg.Ignore)
-		fmt.Fprintf(stdout, "- format: %s\n", cfg.Format)
-		fmt.Fprintf(stdout, "- unresolved: %s\n", cfg.Unresolved)
-		fmt.Fprintf(stdout, "- graph: %s\n", cfg.GraphFormat)
-		fmt.Fprintf(stdout, "- scanned markdown files: %d\n", len(files))
-		fmt.Fprintf(stdout, "- graph nodes: %d\n", len(linkGraph.Adjacency))
-		fmt.Fprintf(stdout, "- graph edges: %d\n", totalEdges)
-		fmt.Fprintf(stdout, "- reachable files: %d\n", len(analysis.Reachable))
-		fmt.Fprintf(stdout, "- orphan files: %d\n", len(analysis.Orphans))
-		fmt.Fprintln(stdout)
+		if writeErr := writef(stdout, "Validated inputs:\n"); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- root: %s\n", cfg.Root); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- dir: %s\n", cfg.Dir); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- ext: %s\n", cfg.Ext); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- ignore: %v\n", cfg.Ignore); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- format: %s\n", cfg.Format); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- unresolved: %s\n", cfg.Unresolved); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- graph: %s\n", cfg.GraphFormat); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- scanned markdown files: %d\n", len(files)); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- graph nodes: %d\n", len(linkGraph.Adjacency)); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- graph edges: %d\n", totalEdges); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- reachable files: %d\n", len(analysis.Reachable)); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- orphan files: %d\n", len(analysis.Orphans)); writeErr != nil {
+			return 2
+		}
+		if _, writeErr := fmt.Fprintln(stdout); writeErr != nil {
+			return 2
+		}
 	}
 
 	warnings := append([]string(nil), linkGraph.Warnings...)
@@ -112,7 +153,9 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		warnings = nil
 	case "warn":
 		for _, warning := range warnings {
-			fmt.Fprintf(stderr, "warning: %s\n", warning)
+			if _, writeErr := fmt.Fprintf(stderr, "warning: %s\n", warning); writeErr != nil {
+				return 2
+			}
 		}
 	case "report":
 		// warnings are emitted in standard report output.
@@ -135,12 +178,18 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 	case "json":
 		rendered, err := report.RenderJSON(rep)
 		if err != nil {
-			fmt.Fprintf(stderr, "error: %v\n", err)
+			if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+				return 2
+			}
 			return 2
 		}
-		fmt.Fprintln(stdout, rendered)
+		if _, writeErr := fmt.Fprintln(stdout, rendered); writeErr != nil {
+			return 2
+		}
 	default:
-		fmt.Fprintln(stdout, report.RenderText(rep, cfg.Verbose, cfg.Unresolved == "report", cfg.GraphFormat != "none"))
+		if _, writeErr := fmt.Fprintln(stdout, report.RenderText(rep, cfg.Verbose, cfg.Unresolved == "report", cfg.GraphFormat != "none")); writeErr != nil {
+			return 2
+		}
 	}
 
 	if len(analysis.Orphans) > 0 {
@@ -199,8 +248,8 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.StringVar(&cfg.GraphFormat, "graph", cfg.GraphFormat, "graph export mode: none, dot, mermaid")
 	fs.StringVar(&cfg.ConfigPath, "config", cfg.ConfigPath, "optional config file path")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: gorphan --root <file.md> [--dir <directory>] [options]")
-		fmt.Fprintln(stderr)
+		_, _ = fmt.Fprintln(stderr, "Usage: gorphan --root <file.md> [--dir <directory>] [options]")
+		_, _ = fmt.Fprintln(stderr)
 		fs.PrintDefaults()
 	}
 
@@ -213,7 +262,7 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 
 	cfg.Ignore = append(cfg.Ignore, []string(ignores)...)
 	if err := validateAndNormalize(&cfg); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
 		return config{}, err
 	}
 
