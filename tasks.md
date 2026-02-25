@@ -30,11 +30,11 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
   - [x] Scan directory exists.
 
 ## Phase 2: File Scanner
-- [ ] Recursively walk scan directory.
-- [ ] Filter files by configured markdown extensions.
-- [ ] Apply ignore rules for paths/patterns.
-- [ ] Normalize and store canonical paths for all markdown files in scope.
-- [ ] Return deterministic file ordering for stable output.
+- [x] Recursively walk scan directory.
+- [x] Filter files by configured markdown extensions.
+- [x] Apply ignore rules for paths/patterns.
+- [x] Normalize and store canonical paths for all markdown files in scope.
+- [x] Return deterministic file ordering for stable output.
 
 ## Phase 3: Markdown Link Parser
 - [ ] Implement inline markdown link extraction (v1 mandatory).

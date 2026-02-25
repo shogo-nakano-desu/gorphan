@@ -15,3 +15,6 @@ This file is the root map of Markdown documents in this repository.
 ## Notes
 - Keep this file updated whenever a new Markdown document is added, moved, or removed.
 - Treat this file as the navigation entry point for humans and tooling.
+
+## Workflow Rule
+- Always create a git commit immediately after completing each implementation phase.

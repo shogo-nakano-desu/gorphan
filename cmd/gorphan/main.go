@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gorphan/internal/scanner"
 )
 
 type multiFlag []string
@@ -39,6 +41,16 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 
+	files, err := scanner.Scan(scanner.Options{
+		Dir:        cfg.Dir,
+		Extensions: scanner.NormalizeExtensions(cfg.Ext),
+		Ignore:     cfg.Ignore,
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 2
+	}
+
 	if cfg.Verbose {
 		fmt.Fprintf(stdout, "Validated inputs:\n")
 		fmt.Fprintf(stdout, "- root: %s\n", cfg.Root)
@@ -46,9 +58,10 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "- ext: %s\n", cfg.Ext)
 		fmt.Fprintf(stdout, "- ignore: %v\n", cfg.Ignore)
 		fmt.Fprintf(stdout, "- format: %s\n", cfg.Format)
+		fmt.Fprintf(stdout, "- scanned markdown files: %d\n", len(files))
 	}
 
-	// Phase 1 only: CLI and validation are complete.
+	// Phase 2 only: scanning is complete. Orphan detection is implemented in later phases.
 	return 0
 }
 
