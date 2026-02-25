@@ -37,17 +37,17 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Return deterministic file ordering for stable output.
 
 ## Phase 3: Markdown Link Parser
-- [ ] Implement inline markdown link extraction (v1 mandatory).
-- [ ] If feasible, add reference-style link support.
-- [ ] Ignore non-local links:
-  - [ ] `http://`
-  - [ ] `https://`
-  - [ ] `mailto:`
-- [ ] Normalize parsed link targets:
-  - [ ] Strip fragment (`#...`)
-  - [ ] Strip query (`?...`)
-  - [ ] Decode basic escaped paths if needed
-- [ ] Define v1 behavior for no-extension targets (ignore by default).
+- [x] Implement inline markdown link extraction (v1 mandatory).
+- [x] If feasible, add reference-style link support.
+- [x] Ignore non-local links:
+  - [x] `http://`
+  - [x] `https://`
+  - [x] `mailto:`
+- [x] Normalize parsed link targets:
+  - [x] Strip fragment (`#...`)
+  - [x] Strip query (`?...`)
+  - [x] Decode basic escaped paths if needed
+- [x] Define v1 behavior for no-extension targets (ignore by default).
 
 ## Phase 4: Graph Builder
 - [ ] Resolve each local link against the linking file directory.
