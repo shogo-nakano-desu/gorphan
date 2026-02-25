@@ -91,6 +91,7 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
   - [x] Disconnected components.
   - [x] Invalid root validation.
 - [x] Golden tests for text/json CLI outputs.
+- [x] E2E tests for real CLI execution (`go run ./cmd/gorphan`).
 - [x] Ensure `go test ./...` passes.
 
 ## Phase 8: Documentation and Release Readiness
