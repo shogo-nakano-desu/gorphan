@@ -1,56 +1,130 @@
 # gorphan
 
-`gorphan` is a lightweight Go CLI to detect orphan Markdown files under a target directory.
+[![CI](https://github.com/shogo-nakano-desu/gorphan/actions/workflows/ci.yml/badge.svg)](https://github.com/shogo-nakano-desu/gorphan/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.22-00ADD8?logo=go)](https://go.dev/)
 
-An orphan Markdown file is a file that is not reachable from a specified root Markdown file by following local Markdown links.
+`gorphan` is a fast, focused CLI to find **orphan markdown files** in documentation trees.
+
+An orphan markdown file is a markdown file that is not reachable from a given root file by following local links.
+
+## Why gorphan?
+- Keep docs navigation healthy as projects grow.
+- Catch disconnected pages before publishing.
+- Integrate in CI with clear exit codes.
+- Export link graphs for visualization (DOT/Mermaid).
+
+## Features
+- Recursive markdown scan with extension filters.
+- Link parsing:
+  - inline markdown links
+  - reference-style links
+  - wikilinks (`[[Page]]`, `[[path/file.md]]`, `[[Page|Alias]]`)
+- Reachability analysis from a root page.
+- Orphan detection with human-readable or JSON output.
+- Unresolved link handling modes (`warn`, `report`, `none`).
+- Optional graph export (`dot`, `mermaid`).
+- Optional `.gorphan.yaml` config with CLI override.
 
 ## Install
+
+Build local binary:
 
 ```bash
 go build -o gorphan ./cmd/gorphan
 ```
 
+Install to `$GOBIN`:
+
+```bash
+go install ./cmd/gorphan
+```
+
+## Use as GitHub Action
+
+This repository is also a Docker-based GitHub Action.
+
+Example workflow:
+
+```yaml
+name: Docs Orphan Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  orphan-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run gorphan
+        uses: shogo-nakano-desu/gorphan@v1
+        with:
+          root: docs/architecture.md
+          dir: docs
+          format: text
+          fail-on-orphans: true
+```
+
+Useful inputs:
+- `root` (required)
+- `dir` (default `.`)
+- `ignore` (newline or comma separated patterns)
+- `format` (`text` or `json`)
+- `unresolved` (`warn`, `report`, `none`)
+- `graph` (`none`, `dot`, `mermaid`)
+- `fail-on-orphans` (`true` or `false`)
+
+Action outputs:
+- `exit-code`
+- `has-orphans`
+
+## Quick Start
+
+```bash
+./gorphan --root docs/index.md --dir docs
+```
+
+`--dir` is optional and defaults to the current directory.
+
 ## Usage
 
 ```bash
-gorphan --root docs/index.md --dir docs
+gorphan --root <root.md> [--dir <path>] [options]
 ```
 
 ### Flags
 - `--root` (required): root markdown file (entry point).
-- `--dir` (optional, default current directory): directory to scan recursively.
+- `--dir` (optional, default current directory): scan target.
 - `--ext` (optional, default `.md,.markdown`): comma-separated markdown extensions.
 - `--ignore` (optional, repeatable): ignore path prefix or glob.
-- `--format` (optional, default `text`): output format (`text` or `json`).
-- `--verbose` (optional): include summary diagnostics.
+- `--format` (optional, default `text`): `text` or `json`.
+- `--verbose` (optional): include diagnostics summary.
 - `--unresolved` (optional, default `warn`): unresolved-link handling (`warn`, `report`, `none`).
 - `--graph` (optional, default `none`): graph export mode (`none`, `dot`, `mermaid`).
-- `--config` (optional, default `.gorphan.yaml`): config file path.
+- `--config` (optional, default `.gorphan.yaml`): explicit config file path.
 
-### Examples
+## Examples
 
-Text output:
+Default text output:
 
 ```bash
 gorphan --root docs/index.md --dir docs
 ```
 
-JSON output:
+JSON output for CI:
 
 ```bash
 gorphan --root docs/index.md --dir docs --format json
 ```
 
-Ignore directories/files:
+Use current directory:
 
 ```bash
-gorphan --root docs/index.md --dir docs --ignore drafts --ignore archive/*
-```
-
-Verbose summary:
-
-```bash
-gorphan --root docs/index.md --dir docs --verbose
+gorphan --root AGENT.md
 ```
 
 Report unresolved links in output:
@@ -59,34 +133,42 @@ Report unresolved links in output:
 gorphan --root docs/index.md --dir docs --unresolved report
 ```
 
-Export graph (DOT):
+Suppress unresolved warnings:
+
+```bash
+gorphan --root docs/index.md --dir docs --unresolved none
+```
+
+Export graph:
 
 ```bash
 gorphan --root docs/index.md --dir docs --graph dot
+gorphan --root docs/index.md --dir docs --graph mermaid
 ```
 
 ## Output and Exit Codes
 
 - Exit code `0`: no orphan files found.
 - Exit code `1`: orphan files found.
-- Exit code `2`: usage/runtime error (invalid args, missing root, scan/build/analyze failure).
+- Exit code `2`: usage/runtime error.
 
-Text format prints a human-readable list of orphan files (relative to `--dir`).
-JSON format prints structured output with:
+Text output:
+- Orphan list (relative to `--dir`).
+- Optional summary when `--verbose`.
+- Optional unresolved section when `--unresolved report`.
+
+JSON output includes:
 - `root`
 - `dir`
 - `orphans`
 - `warnings`
+- `graph`
 - `summary` (`scanned`, `reachable`, `orphans`)
 
-Warnings for unresolved local markdown links are emitted to stderr and do not fail execution by themselves.
+## Configuration (`.gorphan.yaml`)
 
-## Config File (`.gorphan.yaml`)
-
-If `.gorphan.yaml` exists in the current working directory, `gorphan` uses it as default values.
-CLI flags override config values.
-
-Example:
+If `.gorphan.yaml` exists in the current working directory, it is used as defaults.
+CLI flags always win over config values.
 
 ```yaml
 root: docs/index.md
@@ -101,7 +183,7 @@ unresolved: warn
 graph: none
 ```
 
-## Local Pre-PR Quality Checks
+## Development
 
 Enable repository hooks once per clone:
 
@@ -109,7 +191,7 @@ Enable repository hooks once per clone:
 git config core.hooksPath .githooks
 ```
 
-Run these before opening a pull request:
+Run local quality checks:
 
 ```bash
 gofmt -w .
@@ -117,11 +199,29 @@ golangci-lint run
 go test ./...
 ```
 
-## Limitations (v1)
+## Contributing
 
-- The root Markdown file is the reachability entry point.
-- Local markdown links only; external links are ignored.
-- Links without file extensions are ignored by default.
-- Absolute-path links are ignored.
-- Unresolved local links are warned but not treated as fatal errors.
-- Wikilinks are supported with `.md` fallback (`[[Page]]` -> `Page.md`).
+Contributions are welcome. Start with [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Release the Action
+
+Publish and maintain stable Action tags:
+
+```bash
+# After merging to main
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+
+# Move major tag to latest v1 release
+git tag -fa v1 -m "Release v1.0.0"
+git push origin v1 --force
+```
+
+## Roadmap
+- Richer markdown dialect support.
+- Additional graph/report outputs.
+- Performance tuning for very large documentation sets.
+
+## License
+
+No license file has been added yet.
