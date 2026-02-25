@@ -1,0 +1,32 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+cover.out
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Dependency/vendor (uncomment if vendoring)
+# /vendor/
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
