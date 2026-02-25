@@ -63,6 +63,11 @@
   - Print paths relative to scan directory for readability.
 
 ## 7. Testing Strategy
+- CI quality checks (GitHub Actions):
+  - Format check: fail when `gofmt -l .` outputs any files.
+  - Lint check: run `golangci-lint` via `golangci/golangci-lint-action`.
+  - Test check: run `go test ./...`.
+  - Execution order: format -> lint -> test (fast-fail).
 - Unit tests:
   - Link extraction (anchors, external links, odd spacing, escaped chars).
   - Path resolution and normalization.
@@ -80,7 +85,8 @@
 - Milestone 2: Directory scanner + markdown file inventory.
 - Milestone 3: Link parser + path resolver + graph builder.
 - Milestone 4: Reachability analysis + orphan detection output.
-- Milestone 5: Tests (unit + integration) and CI check (`go test ./...`).
+- Milestone 5: Tests (unit + integration) and CI quality gates (format, lint, test) via GitHub Actions workflow (`.github/workflows/ci.yml`).
+  - CI commands: `test -z "$(gofmt -l .)"`, `golangci-lint run`, `go test ./...`.
 - Milestone 6: README with usage examples and limitations.
 
 ## 9. Suggested Project Layout

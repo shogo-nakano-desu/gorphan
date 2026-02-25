@@ -5,9 +5,12 @@ This file is the root map of Markdown documents in this repository.
 ## Current Docs
 - [Implementation Plan](./plan.md): Build plan for the Go CLI that detects orphan Markdown files.
 - [Task Breakdown](./tasks.md): Detailed implementation checklist derived from `plan.md`.
+- [README](./README.md): Usage, flags, output behavior, and local quality checks.
+- [Phase 5 Plan](./phase5-plan.md): Implementation spec for reachability and orphan detection.
+- [CI Quality Plan](./ci-quality-plan.md): CI formatter/linter/test quality-gate plan.
+- [Remaining Implementation Plan](./remaining-implementation-plan.md): Plan for Phases 6-8 completion.
 
 ## Planned Docs
-- [README](./README.md): Project overview, install, usage, and examples. *(to be created)*
 - [Architecture](./docs/architecture.md): Package boundaries and data flow. *(to be created)*
 - [Testing Guide](./docs/testing.md): Unit/integration strategy and fixtures. *(to be created)*
 - [Contributing](./CONTRIBUTING.md): Development workflow and standards. *(to be created)*

@@ -94,15 +94,15 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Ensure `go test ./...` passes.
 
 ## Phase 8: Documentation and Release Readiness
-- [ ] Finalize `README.md`:
-  - [ ] Problem definition and orphan semantics.
-  - [ ] Install/run instructions.
-  - [ ] Usage examples.
-  - [ ] Output format and exit codes.
-  - [ ] Known limitations (v1 scope).
-- [ ] Add sample command:
-  - [ ] `gorphan --root docs/index.md --dir docs`
-- [ ] Document future enhancements as non-goals for v1.
+- [x] Finalize `README.md`:
+  - [x] Problem definition and orphan semantics.
+  - [x] Install/run instructions.
+  - [x] Usage examples.
+  - [x] Output format and exit codes.
+  - [x] Known limitations (v1 scope).
+- [x] Add sample command:
+  - [x] `gorphan --root docs/index.md --dir docs`
+- [x] Document future enhancements as non-goals for v1.
 
 ## Optional Backlog (Post-v1)
 - [ ] Wikilink support (`[[Page]]`).
@@ -120,4 +120,4 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Ensure CI runs on `push` to `main` and all `pull_request` events.
 - [x] Enforce gate result: CI passes only if format, lint, and tests all pass.
 - [x] Enforce failure behavior: any format/lint/test failure fails the workflow.
-- [ ] Document local pre-PR sequence: `gofmt`, `golangci-lint run`, `go test ./...`.
+- [x] Document local pre-PR sequence: `gofmt`, `golangci-lint run`, `go test ./...`.
