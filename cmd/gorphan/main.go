@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gorphan/internal/graph"
 	"gorphan/internal/scanner"
 )
 
@@ -40,10 +41,11 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 	if err != nil {
 		return 2
 	}
+	extensions := scanner.NormalizeExtensions(cfg.Ext)
 
 	files, err := scanner.Scan(scanner.Options{
 		Dir:        cfg.Dir,
-		Extensions: scanner.NormalizeExtensions(cfg.Ext),
+		Extensions: extensions,
 		Ignore:     cfg.Ignore,
 	})
 	if err != nil {
@@ -51,7 +53,22 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 
+	linkGraph, err := graph.Build(graph.Options{
+		Root:       cfg.Root,
+		ScanDir:    cfg.Dir,
+		Files:      files,
+		Extensions: extensions,
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 2
+	}
+
 	if cfg.Verbose {
+		totalEdges := 0
+		for _, targets := range linkGraph.Adjacency {
+			totalEdges += len(targets)
+		}
 		fmt.Fprintf(stdout, "Validated inputs:\n")
 		fmt.Fprintf(stdout, "- root: %s\n", cfg.Root)
 		fmt.Fprintf(stdout, "- dir: %s\n", cfg.Dir)
@@ -59,9 +76,11 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "- ignore: %v\n", cfg.Ignore)
 		fmt.Fprintf(stdout, "- format: %s\n", cfg.Format)
 		fmt.Fprintf(stdout, "- scanned markdown files: %d\n", len(files))
+		fmt.Fprintf(stdout, "- graph nodes: %d\n", len(linkGraph.Adjacency))
+		fmt.Fprintf(stdout, "- graph edges: %d\n", totalEdges)
 	}
 
-	// Phase 2 only: scanning is complete. Orphan detection is implemented in later phases.
+	// Phase 4 only: graph construction is complete. Reachability and orphan reporting are next.
 	return 0
 }
 

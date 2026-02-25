@@ -50,13 +50,13 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Define v1 behavior for no-extension targets (ignore by default).
 
 ## Phase 4: Graph Builder
-- [ ] Resolve each local link against the linking file directory.
-- [ ] Canonicalize resolved paths (`Clean`, absolute form).
-- [ ] Keep edges only when target:
-  - [ ] Is within scan directory.
-  - [ ] Matches markdown extension set.
-  - [ ] Exists in scanned markdown inventory.
-- [ ] Build adjacency map `source -> []target`.
+- [x] Resolve each local link against the linking file directory.
+- [x] Canonicalize resolved paths (`Clean`, absolute form).
+- [x] Keep edges only when target:
+  - [x] Is within scan directory.
+  - [x] Matches markdown extension set.
+  - [x] Exists in scanned markdown inventory.
+- [x] Build adjacency map `source -> []target`.
 
 ## Phase 5: Reachability and Orphan Detection
 - [ ] Traverse graph from root (DFS or BFS).
