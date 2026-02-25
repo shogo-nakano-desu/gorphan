@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"gorphan/internal/graph"
+	"gorphan/internal/report"
 	"gorphan/internal/scanner"
 )
 
@@ -85,9 +86,40 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "- graph edges: %d\n", totalEdges)
 		fmt.Fprintf(stdout, "- reachable files: %d\n", len(analysis.Reachable))
 		fmt.Fprintf(stdout, "- orphan files: %d\n", len(analysis.Orphans))
+		fmt.Fprintln(stdout)
 	}
 
-	// Phase 4 only: graph construction is complete. Reachability and orphan reporting are next.
+	for _, warning := range linkGraph.Warnings {
+		fmt.Fprintf(stderr, "warning: %s\n", warning)
+	}
+
+	rep := report.Result{
+		Root:     cfg.Root,
+		Dir:      cfg.Dir,
+		Orphans:  analysis.OrphansRelative,
+		Warnings: linkGraph.Warnings,
+		Summary: report.Summary{
+			Scanned:   len(files),
+			Reachable: len(analysis.Reachable),
+			Orphans:   len(analysis.Orphans),
+		},
+	}
+
+	switch cfg.Format {
+	case "json":
+		rendered, err := report.RenderJSON(rep)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 2
+		}
+		fmt.Fprintln(stdout, rendered)
+	default:
+		fmt.Fprintln(stdout, report.RenderText(rep, cfg.Verbose))
+	}
+
+	if len(analysis.Orphans) > 0 {
+		return 1
+	}
 	return 0
 }
 

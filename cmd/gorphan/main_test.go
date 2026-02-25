@@ -67,6 +67,9 @@ func TestRun_ValidInput(t *testing.T) {
 	if !strings.Contains(stdout.String(), "orphan files: 0") {
 		t.Fatalf("expected orphan files count, got: %s", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), "No orphan markdown files found.") {
+		t.Fatalf("expected no-orphan message, got: %s", stdout.String())
+	}
 }
 
 func TestRun_InvalidFormat(t *testing.T) {
@@ -99,6 +102,68 @@ func TestRun_RootExcludedByIgnore_Fails(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "root markdown file is not in scan result") {
 		t.Fatalf("expected root inventory error message, got: %s", stderr.String())
+	}
+}
+
+func TestRun_OrphansReturnExitCode1(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	orphan := filepath.Join(docs, "orphan.md")
+	mustWrite(t, root, "# root")
+	mustWrite(t, orphan, "# orphan")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d", code)
+	}
+	if !strings.Contains(stdout.String(), "Orphan markdown files (1):") {
+		t.Fatalf("expected orphan output, got: %s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "- orphan.md") {
+		t.Fatalf("expected orphan relative path, got: %s", stdout.String())
+	}
+}
+
+func TestRun_JSONFormat(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	orphan := filepath.Join(docs, "orphan.md")
+	mustWrite(t, root, "# root")
+	mustWrite(t, orphan, "# orphan")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--format", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected exit code 1 for orphan case, got %d", code)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, `"orphans": [`) {
+		t.Fatalf("expected json orphans array, got: %s", out)
+	}
+	if !strings.Contains(out, `"orphan.md"`) {
+		t.Fatalf("expected orphan path in json, got: %s", out)
+	}
+}
+
+func TestRun_WarningIsNonFatal(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	mustWrite(t, root, "[missing](./missing.md)")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0 (no orphan files), got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "warning: unresolved local markdown link:") {
+		t.Fatalf("expected unresolved warning, got: %s", stderr.String())
 	}
 }
 

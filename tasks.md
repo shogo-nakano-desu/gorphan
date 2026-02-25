@@ -66,17 +66,17 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Convert output paths to relative paths from scan directory.
 
 ## Phase 6: Output, Exit Codes, and UX
-- [ ] Text formatter:
-  - [ ] Human-readable orphan list.
-  - [ ] Optional verbose summary (scanned, reachable, orphan counts).
-- [ ] JSON formatter:
-  - [ ] Structured output for automation/CI.
-- [ ] Exit code behavior:
-  - [ ] `0` when no orphans.
-  - [ ] `1` when orphans exist.
-  - [ ] `>1` on usage/runtime errors.
-- [ ] Warning strategy:
-  - [ ] Warn on unresolvable local links (do not fail v1).
+- [x] Text formatter:
+  - [x] Human-readable orphan list.
+  - [x] Optional verbose summary (scanned, reachable, orphan counts).
+- [x] JSON formatter:
+  - [x] Structured output for automation/CI.
+- [x] Exit code behavior:
+  - [x] `0` when no orphans.
+  - [x] `1` when orphans exist.
+  - [x] `>1` on usage/runtime errors.
+- [x] Warning strategy:
+  - [x] Warn on unresolvable local links (do not fail v1).
 
 ## Phase 7: Tests
 - [ ] Unit tests:
@@ -110,3 +110,14 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [ ] Graph export (dot/mermaid).
 - [ ] Parallel parsing for large repositories.
 - [ ] Config file support (`.gorphan.yaml`).
+
+## Phase 9: CI Quality Gates
+- [x] Add formatter check in GitHub Actions using `gofmt -l .`.
+- [x] Fail CI when formatter output is non-empty.
+- [x] Add linter check in GitHub Actions using `golangci-lint`.
+- [x] Configure `golangci/golangci-lint-action` with a pinned version.
+- [x] Keep/verify `go test ./...` after lint in CI.
+- [x] Ensure CI runs on `push` to `main` and all `pull_request` events.
+- [x] Enforce gate result: CI passes only if format, lint, and tests all pass.
+- [x] Enforce failure behavior: any format/lint/test failure fails the workflow.
+- [ ] Document local pre-PR sequence: `gofmt`, `golangci-lint run`, `go test ./...`.

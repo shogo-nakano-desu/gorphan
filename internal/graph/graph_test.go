@@ -42,6 +42,9 @@ func TestBuild_GraphFiltersTargets(t *testing.T) {
 	if g.Root != root {
 		t.Fatalf("unexpected root: %s", g.Root)
 	}
+	if len(g.Warnings) != 1 {
+		t.Fatalf("expected one unresolved warning, got: %#v", g.Warnings)
+	}
 }
 
 func TestBuild_RequiresRootAndDir(t *testing.T) {

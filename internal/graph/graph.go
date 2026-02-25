@@ -20,6 +20,7 @@ type Options struct {
 type Graph struct {
 	Root      string
 	Adjacency map[string][]string
+	Warnings  []string
 }
 
 type Analysis struct {
@@ -52,6 +53,7 @@ func Build(opts Options) (*Graph, error) {
 	extSet := buildExtSet(opts.Extensions)
 	inventory := make(map[string]struct{}, len(opts.Files))
 	adj := make(map[string][]string, len(opts.Files))
+	warningSet := make(map[string]struct{})
 
 	for _, file := range opts.Files {
 		abs, err := filepath.Abs(file)
@@ -87,6 +89,7 @@ func Build(opts Options) (*Graph, error) {
 				continue
 			}
 			if _, ok := inventory[target]; !ok {
+				warningSet[fmt.Sprintf("unresolved local markdown link: %s -> %s", src, target)] = struct{}{}
 				continue
 			}
 			targetSet[target] = struct{}{}
@@ -100,9 +103,12 @@ func Build(opts Options) (*Graph, error) {
 		adj[src] = targets
 	}
 
+	warnings := toSortedSlice(warningSet)
+
 	return &Graph{
 		Root:      rootAbs,
 		Adjacency: adj,
+		Warnings:  warnings,
 	}, nil
 }
 
