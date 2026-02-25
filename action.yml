@@ -1,0 +1,58 @@
+name: "gorphan"
+description: "Detect orphan markdown files from a root document."
+author: "shogo-nakano-desu"
+
+inputs:
+  root:
+    description: "Root markdown file path (required)."
+    required: true
+  dir:
+    description: "Directory to scan recursively."
+    required: false
+    default: "."
+  ext:
+    description: "Comma-separated markdown extensions."
+    required: false
+    default: ".md,.markdown"
+  ignore:
+    description: "Ignore path prefixes or globs (newline or comma separated)."
+    required: false
+    default: ""
+  format:
+    description: "Output format: text or json."
+    required: false
+    default: "text"
+  verbose:
+    description: "Print diagnostics summary."
+    required: false
+    default: "false"
+  unresolved:
+    description: "Unresolved link mode: warn, report, none."
+    required: false
+    default: "warn"
+  graph:
+    description: "Graph export mode: none, dot, mermaid."
+    required: false
+    default: "none"
+  config:
+    description: "Optional config file path."
+    required: false
+    default: ""
+  fail-on-orphans:
+    description: "Fail action when orphans are found (gorphan exit code 1)."
+    required: false
+    default: "true"
+
+outputs:
+  exit-code:
+    description: "gorphan process exit code."
+  has-orphans:
+    description: "true when orphans were detected."
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
+
+branding:
+  icon: "search"
+  color: "blue"

@@ -1,0 +1,28 @@
+name: Action Smoke Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run local action
+        id: gorphan
+        uses: ./
+        with:
+          root: docs/architecture.md
+          dir: docs
+          format: json
+          fail-on-orphans: false
+
+      - name: Print action outputs
+        run: |
+          echo "exit-code=${{ steps.gorphan.outputs.exit-code }}"
+          echo "has-orphans=${{ steps.gorphan.outputs.has-orphans }}"
