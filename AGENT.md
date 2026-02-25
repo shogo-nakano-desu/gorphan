@@ -4,6 +4,7 @@ This file is the root map of Markdown documents in this repository.
 
 ## Current Docs
 - [Implementation Plan](./plan.md): Build plan for the Go CLI that detects orphan Markdown files.
+- [Task Breakdown](./tasks.md): Detailed implementation checklist derived from `plan.md`.
 
 ## Planned Docs
 - [README](./README.md): Project overview, install, usage, and examples. *(to be created)*
