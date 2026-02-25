@@ -1,0 +1,12 @@
+{
+  "root": "<ROOT>",
+  "dir": "<DIR>",
+  "orphans": [
+    "orphan.md"
+  ],
+  "summary": {
+    "scanned": 2,
+    "reachable": 1,
+    "orphans": 1
+  }
+}

@@ -79,19 +79,19 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
   - [x] Warn on unresolvable local links (do not fail v1).
 
 ## Phase 7: Tests
-- [ ] Unit tests:
-  - [ ] Link extraction edge cases.
-  - [ ] Path resolution/normalization.
-  - [ ] Ignore rule matching.
-  - [ ] Reachability traversal.
-- [ ] Integration tests using fixtures:
-  - [ ] No orphan scenario.
-  - [ ] Multiple orphan files.
-  - [ ] Cyclic links.
-  - [ ] Disconnected components.
-  - [ ] Invalid root validation.
-- [ ] Golden tests for text/json CLI outputs.
-- [ ] Ensure `go test ./...` passes.
+- [x] Unit tests:
+  - [x] Link extraction edge cases.
+  - [x] Path resolution/normalization.
+  - [x] Ignore rule matching.
+  - [x] Reachability traversal.
+- [x] Integration tests using fixtures:
+  - [x] No orphan scenario.
+  - [x] Multiple orphan files.
+  - [x] Cyclic links.
+  - [x] Disconnected components.
+  - [x] Invalid root validation.
+- [x] Golden tests for text/json CLI outputs.
+- [x] Ensure `go test ./...` passes.
 
 ## Phase 8: Documentation and Release Readiness
 - [ ] Finalize `README.md`:
