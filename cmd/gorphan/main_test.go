@@ -30,6 +30,37 @@ func TestParseArgsAndValidate_Success(t *testing.T) {
 	}
 }
 
+func TestParseArgsAndValidate_DefaultDirCurrentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	mustWrite(t, root, "# root")
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	defer func() { _ = os.Chdir(cwd) }()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	cfg, err := parseArgs([]string{"--root", "index.md"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("parseArgs failed: %v", err)
+	}
+	wantDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		wantDir = dir
+	}
+	gotDir, err := filepath.EvalSymlinks(cfg.Dir)
+	if err != nil {
+		gotDir = cfg.Dir
+	}
+	if gotDir != wantDir {
+		t.Fatalf("expected default --dir to current directory %q, got %q", wantDir, gotDir)
+	}
+}
+
 func TestParseArgsAndValidate_RootOutsideDir(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
@@ -67,6 +98,33 @@ func TestRun_ValidInput(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "orphan files: 0") {
 		t.Fatalf("expected orphan files count, got: %s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "No orphan markdown files found.") {
+		t.Fatalf("expected no-orphan message, got: %s", stdout.String())
+	}
+}
+
+func TestRun_ValidInputWithoutDir(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	child := filepath.Join(dir, "child.md")
+	mustWrite(t, root, "[child](./child.md)")
+	mustWrite(t, child, "# child")
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	defer func() { _ = os.Chdir(cwd) }()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", "index.md"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d; stderr=%s", code, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "No orphan markdown files found.") {
 		t.Fatalf("expected no-orphan message, got: %s", stdout.String())

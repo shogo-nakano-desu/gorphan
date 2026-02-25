@@ -18,7 +18,7 @@ gorphan --root docs/index.md --dir docs
 
 ### Flags
 - `--root` (required): root markdown file (entry point).
-- `--dir` (required): directory to scan recursively.
+- `--dir` (optional, default current directory): directory to scan recursively.
 - `--ext` (optional, default `.md,.markdown`): comma-separated markdown extensions.
 - `--ignore` (optional, repeatable): ignore path prefix or glob.
 - `--format` (optional, default `text`): output format (`text` or `json`).

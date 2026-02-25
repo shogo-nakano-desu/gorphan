@@ -190,7 +190,7 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs := flag.NewFlagSet("gorphan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.StringVar(&cfg.Root, "root", cfg.Root, "root markdown file (required)")
-	fs.StringVar(&cfg.Dir, "dir", cfg.Dir, "directory to scan recursively (required)")
+	fs.StringVar(&cfg.Dir, "dir", cfg.Dir, "directory to scan recursively (default: current directory)")
 	fs.StringVar(&cfg.Ext, "ext", cfg.Ext, "comma-separated markdown extensions")
 	fs.Var(&ignores, "ignore", "ignore path prefix or glob (repeatable)")
 	fs.StringVar(&cfg.Format, "format", cfg.Format, "output format: text or json")
@@ -199,7 +199,7 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.StringVar(&cfg.GraphFormat, "graph", cfg.GraphFormat, "graph export mode: none, dot, mermaid")
 	fs.StringVar(&cfg.ConfigPath, "config", cfg.ConfigPath, "optional config file path")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: gorphan --root <file.md> --dir <directory> [options]")
+		fmt.Fprintln(stderr, "Usage: gorphan --root <file.md> [--dir <directory>] [options]")
 		fmt.Fprintln(stderr)
 		fs.PrintDefaults()
 	}
@@ -225,7 +225,7 @@ func validateAndNormalize(cfg *config) error {
 		return fmt.Errorf("--root is required")
 	}
 	if strings.TrimSpace(cfg.Dir) == "" {
-		return fmt.Errorf("--dir is required")
+		cfg.Dir = "."
 	}
 
 	cfg.Format = strings.ToLower(strings.TrimSpace(cfg.Format))
