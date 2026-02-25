@@ -121,8 +121,17 @@ func parseDestination(raw string) string {
 		}
 	}
 
-	if i := strings.IndexAny(dest, " \t\n\r"); i >= 0 {
+	for i := 0; i < len(dest); i++ {
+		ch := dest[i]
+		if ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' {
+			continue
+		}
+
+		if i > 0 && dest[i-1] == '\\' {
+			continue
+		}
 		dest = dest[:i]
+		break
 	}
 
 	return strings.TrimSpace(dest)
