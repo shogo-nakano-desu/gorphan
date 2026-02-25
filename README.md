@@ -103,6 +103,12 @@ graph: none
 
 ## Local Pre-PR Quality Checks
 
+Enable repository hooks once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 Run these before opening a pull request:
 
 ```bash

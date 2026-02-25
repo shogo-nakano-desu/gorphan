@@ -3,6 +3,8 @@
 ## Workflow
 - Create focused changes and keep commits scoped.
 - Add or update tests for new features and bug fixes.
+- Enable repository hooks once per clone:
+  - `git config core.hooksPath .githooks`
 - Run local quality checks before opening a PR:
   - `gofmt -w .`
   - `golangci-lint run`

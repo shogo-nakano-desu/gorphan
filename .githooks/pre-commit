@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if ! command -v gofmt >/dev/null 2>&1; then
+  echo "pre-commit: gofmt is required but not found in PATH" >&2
+  exit 1
+fi
+
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "pre-commit: golangci-lint is required but not found in PATH" >&2
+  exit 1
+fi
+
+echo "pre-commit: running gofmt -w ."
+gofmt -w .
+
+echo "pre-commit: staging gofmt updates"
+git add -A
+
+echo "pre-commit: running golangci-lint run"
+golangci-lint run
+
+echo "pre-commit: checks passed"
