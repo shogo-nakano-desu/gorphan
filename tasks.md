@@ -14,20 +14,20 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Add basic `README.md` with temporary usage placeholder.
 
 ## Phase 1: CLI Skeleton and Validation
-- [ ] Implement CLI command `gorphan`.
-- [ ] Add required flags:
-  - [ ] `--root`
-  - [ ] `--dir`
-- [ ] Add optional flags:
-  - [ ] `--ext` (default: `.md,.markdown`)
-  - [ ] `--ignore` (repeatable)
-  - [ ] `--format` (`text` default, plus `json`)
-  - [ ] `--verbose`
-- [ ] Validate inputs:
-  - [ ] Root file exists.
-  - [ ] Root path points to a file.
-  - [ ] Root is under scan directory.
-  - [ ] Scan directory exists.
+- [x] Implement CLI command `gorphan`.
+- [x] Add required flags:
+  - [x] `--root`
+  - [x] `--dir`
+- [x] Add optional flags:
+  - [x] `--ext` (default: `.md,.markdown`)
+  - [x] `--ignore` (repeatable)
+  - [x] `--format` (`text` default, plus `json`)
+  - [x] `--verbose`
+- [x] Validate inputs:
+  - [x] Root file exists.
+  - [x] Root path points to a file.
+  - [x] Root is under scan directory.
+  - [x] Scan directory exists.
 
 ## Phase 2: File Scanner
 - [ ] Recursively walk scan directory.
