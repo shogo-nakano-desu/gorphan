@@ -17,10 +17,11 @@ type Result struct {
 	Dir      string   `json:"dir"`
 	Orphans  []string `json:"orphans"`
 	Warnings []string `json:"warnings,omitempty"`
+	Graph    string   `json:"graph,omitempty"`
 	Summary  Summary  `json:"summary"`
 }
 
-func RenderText(r Result, verbose bool) string {
+func RenderText(r Result, verbose bool, showWarnings bool, showGraph bool) string {
 	lines := make([]string, 0)
 	if len(r.Orphans) == 0 {
 		lines = append(lines, "No orphan markdown files found.")
@@ -40,6 +41,20 @@ func RenderText(r Result, verbose bool) string {
 		lines = append(lines, fmt.Sprintf("- reachable: %d", r.Summary.Reachable))
 		lines = append(lines, fmt.Sprintf("- orphans: %d", r.Summary.Orphans))
 		lines = append(lines, fmt.Sprintf("- warnings: %d", len(r.Warnings)))
+	}
+
+	if showWarnings && len(r.Warnings) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("Unresolved local links (%d):", len(r.Warnings)))
+		for _, warning := range r.Warnings {
+			lines = append(lines, "- "+warning)
+		}
+	}
+
+	if showGraph && strings.TrimSpace(r.Graph) != "" {
+		lines = append(lines, "")
+		lines = append(lines, "Graph:")
+		lines = append(lines, r.Graph)
 	}
 
 	return strings.Join(lines, "\n")

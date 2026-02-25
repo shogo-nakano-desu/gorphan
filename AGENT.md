@@ -12,6 +12,7 @@ This file is the root map of Markdown documents in this repository.
 - [Phase 5 Plan](./phase5-plan.md): Implementation spec for reachability and orphan detection.
 - [CI Quality Plan](./ci-quality-plan.md): CI formatter/linter/test quality-gate plan.
 - [Remaining Implementation Plan](./remaining-implementation-plan.md): Plan for Phases 6-8 completion.
+- [Optional Backlog Plan](./optional-backlog-plan.md): Plan for optional post-v1 enhancements.
 
 ## Planned Docs
 - None.

@@ -138,6 +138,48 @@ func TestAnalyze_HandlesRootWithNoEdges(t *testing.T) {
 	}
 }
 
+func TestExportDOT(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	a := filepath.Join(dir, "a.md")
+	g := &Graph{
+		Root: root,
+		Adjacency: map[string][]string{
+			root: {a},
+			a:    {},
+		},
+	}
+
+	out, err := ExportDOT(g, dir)
+	if err != nil {
+		t.Fatalf("export dot failed: %v", err)
+	}
+	if !strings.Contains(out, `"index.md" -> "a.md";`) {
+		t.Fatalf("unexpected dot output: %s", out)
+	}
+}
+
+func TestExportMermaid(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	a := filepath.Join(dir, "a.md")
+	g := &Graph{
+		Root: root,
+		Adjacency: map[string][]string{
+			root: {a},
+			a:    {},
+		},
+	}
+
+	out, err := ExportMermaid(g, dir)
+	if err != nil {
+		t.Fatalf("export mermaid failed: %v", err)
+	}
+	if !strings.Contains(out, `"index.md" --> "a.md"`) {
+		t.Fatalf("unexpected mermaid output: %s", out)
+	}
+}
+
 func mustWrite(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -17,6 +17,8 @@ func TestExtractLocalMarkdownLinks(t *testing.T) {
 
 [ref-doc][doc]
 [doc]: ./ref/readme.markdown#top
+[[WikiPage]]
+[[nested/Guide|Guide Page]]
 `
 
 	got := ExtractLocalMarkdownLinks(content, []string{".md", ".markdown"})
@@ -24,6 +26,8 @@ func TestExtractLocalMarkdownLinks(t *testing.T) {
 		"guide/intro.md",
 		"guide/my file.md",
 		"ref/readme.markdown",
+		"WikiPage.md",
+		"nested/Guide.md",
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -35,6 +39,7 @@ func TestExtractLocalMarkdownLinks_IgnoresAbsoluteAndUnknownExt(t *testing.T) {
 	content := `
 [root](/docs/root.md)
 [pdf](./docs/manual.pdf)
+[[#Section]]
 `
 
 	got := ExtractLocalMarkdownLinks(content, []string{".md"})

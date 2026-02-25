@@ -12,6 +12,7 @@ var (
 	inlineLinkRe = regexp.MustCompile(`\[[^\]]+\]\(([^)]+)\)`)
 	refDefRe     = regexp.MustCompile(`(?m)^\s{0,3}\[([^\]]+)\]:\s*(\S+)`)
 	refLinkRe    = regexp.MustCompile(`\[[^\]]+\]\[([^\]]*)\]`)
+	wikiLinkRe   = regexp.MustCompile(`\[\[([^\]]+)\]\]`)
 )
 
 func ExtractLocalMarkdownLinks(content string, extensions []string) []string {
@@ -49,6 +50,21 @@ func ExtractLocalMarkdownLinks(content string, extensions []string) []string {
 			continue
 		}
 		target, ok := normalizeMarkdownTarget(raw, extSet)
+		if !ok {
+			continue
+		}
+		if _, exists := seen[target]; exists {
+			continue
+		}
+		seen[target] = struct{}{}
+		links = append(links, target)
+	}
+
+	for _, match := range wikiLinkRe.FindAllStringSubmatch(content, -1) {
+		if len(match) < 2 {
+			continue
+		}
+		target, ok := normalizeWikiTarget(match[1], extSet)
 		if !ok {
 			continue
 		}
@@ -107,6 +123,23 @@ func normalizeMarkdownTarget(raw string, extSet map[string]struct{}) (string, bo
 		return "", false
 	}
 	return target, true
+}
+
+func normalizeWikiTarget(raw string, extSet map[string]struct{}) (string, bool) {
+	target := strings.TrimSpace(raw)
+	if target == "" {
+		return "", false
+	}
+	if i := strings.Index(target, "|"); i >= 0 {
+		target = strings.TrimSpace(target[:i])
+	}
+	if target == "" || strings.HasPrefix(target, "#") {
+		return "", false
+	}
+	if filepath.Ext(target) == "" {
+		target += ".md"
+	}
+	return normalizeMarkdownTarget(target, extSet)
 }
 
 func parseDestination(raw string) string {

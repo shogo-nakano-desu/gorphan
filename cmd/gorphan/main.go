@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	configpkg "gorphan/internal/config"
 	"gorphan/internal/graph"
 	"gorphan/internal/report"
 	"gorphan/internal/scanner"
@@ -25,12 +26,15 @@ func (m *multiFlag) Set(value string) error {
 }
 
 type config struct {
-	Root    string
-	Dir     string
-	Ext     string
-	Ignore  []string
-	Format  string
-	Verbose bool
+	Root        string
+	Dir         string
+	Ext         string
+	Ignore      []string
+	Format      string
+	Verbose     bool
+	Unresolved  string
+	GraphFormat string
+	ConfigPath  string
 }
 
 func main() {
@@ -69,6 +73,17 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
+	graphText := ""
+	switch cfg.GraphFormat {
+	case "dot":
+		graphText, err = graph.ExportDOT(linkGraph, cfg.Dir)
+	case "mermaid":
+		graphText, err = graph.ExportMermaid(linkGraph, cfg.Dir)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 2
+	}
 
 	if cfg.Verbose {
 		totalEdges := 0
@@ -81,6 +96,8 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "- ext: %s\n", cfg.Ext)
 		fmt.Fprintf(stdout, "- ignore: %v\n", cfg.Ignore)
 		fmt.Fprintf(stdout, "- format: %s\n", cfg.Format)
+		fmt.Fprintf(stdout, "- unresolved: %s\n", cfg.Unresolved)
+		fmt.Fprintf(stdout, "- graph: %s\n", cfg.GraphFormat)
 		fmt.Fprintf(stdout, "- scanned markdown files: %d\n", len(files))
 		fmt.Fprintf(stdout, "- graph nodes: %d\n", len(linkGraph.Adjacency))
 		fmt.Fprintf(stdout, "- graph edges: %d\n", totalEdges)
@@ -89,15 +106,24 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		fmt.Fprintln(stdout)
 	}
 
-	for _, warning := range linkGraph.Warnings {
-		fmt.Fprintf(stderr, "warning: %s\n", warning)
+	warnings := append([]string(nil), linkGraph.Warnings...)
+	switch cfg.Unresolved {
+	case "none":
+		warnings = nil
+	case "warn":
+		for _, warning := range warnings {
+			fmt.Fprintf(stderr, "warning: %s\n", warning)
+		}
+	case "report":
+		// warnings are emitted in standard report output.
 	}
 
 	rep := report.Result{
 		Root:     cfg.Root,
 		Dir:      cfg.Dir,
 		Orphans:  analysis.OrphansRelative,
-		Warnings: linkGraph.Warnings,
+		Warnings: warnings,
+		Graph:    graphText,
 		Summary: report.Summary{
 			Scanned:   len(files),
 			Reachable: len(analysis.Reachable),
@@ -114,7 +140,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, rendered)
 	default:
-		fmt.Fprintln(stdout, report.RenderText(rep, cfg.Verbose))
+		fmt.Fprintln(stdout, report.RenderText(rep, cfg.Verbose, cfg.Unresolved == "report", cfg.GraphFormat != "none"))
 	}
 
 	if len(analysis.Orphans) > 0 {
@@ -126,15 +152,52 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 func parseArgs(args []string, stderr io.Writer) (config, error) {
 	var cfg config
 	var ignores multiFlag
+	cfgPath, cfgExplicit, err := configpkg.FindConfigArg(args)
+	if err != nil {
+		return config{}, err
+	}
+	fileCfg, _, err := configpkg.Load(cfgPath, cfgExplicit)
+	if err != nil {
+		return config{}, err
+	}
+
+	cfg = config{
+		Root:        fileCfg.Root,
+		Dir:         fileCfg.Dir,
+		Ext:         fileCfg.Ext,
+		Ignore:      append([]string(nil), fileCfg.Ignore...),
+		Format:      fileCfg.Format,
+		Unresolved:  fileCfg.Unresolved,
+		GraphFormat: fileCfg.Graph,
+		ConfigPath:  cfgPath,
+	}
+	if fileCfg.Verbose != nil {
+		cfg.Verbose = *fileCfg.Verbose
+	}
+	if cfg.Ext == "" {
+		cfg.Ext = ".md,.markdown"
+	}
+	if cfg.Format == "" {
+		cfg.Format = "text"
+	}
+	if cfg.Unresolved == "" {
+		cfg.Unresolved = "warn"
+	}
+	if cfg.GraphFormat == "" {
+		cfg.GraphFormat = "none"
+	}
 
 	fs := flag.NewFlagSet("gorphan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	fs.StringVar(&cfg.Root, "root", "", "root markdown file (required)")
-	fs.StringVar(&cfg.Dir, "dir", "", "directory to scan recursively (required)")
-	fs.StringVar(&cfg.Ext, "ext", ".md,.markdown", "comma-separated markdown extensions")
+	fs.StringVar(&cfg.Root, "root", cfg.Root, "root markdown file (required)")
+	fs.StringVar(&cfg.Dir, "dir", cfg.Dir, "directory to scan recursively (required)")
+	fs.StringVar(&cfg.Ext, "ext", cfg.Ext, "comma-separated markdown extensions")
 	fs.Var(&ignores, "ignore", "ignore path prefix or glob (repeatable)")
-	fs.StringVar(&cfg.Format, "format", "text", "output format: text or json")
-	fs.BoolVar(&cfg.Verbose, "verbose", false, "print validation diagnostics")
+	fs.StringVar(&cfg.Format, "format", cfg.Format, "output format: text or json")
+	fs.BoolVar(&cfg.Verbose, "verbose", cfg.Verbose, "print validation diagnostics")
+	fs.StringVar(&cfg.Unresolved, "unresolved", cfg.Unresolved, "unresolved-link mode: warn, report, none")
+	fs.StringVar(&cfg.GraphFormat, "graph", cfg.GraphFormat, "graph export mode: none, dot, mermaid")
+	fs.StringVar(&cfg.ConfigPath, "config", cfg.ConfigPath, "optional config file path")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: gorphan --root <file.md> --dir <directory> [options]")
 		fmt.Fprintln(stderr)
@@ -148,7 +211,7 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 		return config{}, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
 	}
 
-	cfg.Ignore = []string(ignores)
+	cfg.Ignore = append(cfg.Ignore, []string(ignores)...)
 	if err := validateAndNormalize(&cfg); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return config{}, err
@@ -168,6 +231,14 @@ func validateAndNormalize(cfg *config) error {
 	cfg.Format = strings.ToLower(strings.TrimSpace(cfg.Format))
 	if cfg.Format != "text" && cfg.Format != "json" {
 		return fmt.Errorf("--format must be one of: text, json")
+	}
+	cfg.Unresolved = strings.ToLower(strings.TrimSpace(cfg.Unresolved))
+	if cfg.Unresolved != "warn" && cfg.Unresolved != "report" && cfg.Unresolved != "none" {
+		return fmt.Errorf("--unresolved must be one of: warn, report, none")
+	}
+	cfg.GraphFormat = strings.ToLower(strings.TrimSpace(cfg.GraphFormat))
+	if cfg.GraphFormat != "none" && cfg.GraphFormat != "dot" && cfg.GraphFormat != "mermaid" {
+		return fmt.Errorf("--graph must be one of: none, dot, mermaid")
 	}
 
 	dirAbs, err := filepath.Abs(cfg.Dir)

@@ -17,7 +17,7 @@ func TestRenderText_NoOrphans(t *testing.T) {
 		},
 	}
 
-	out := RenderText(r, true)
+	out := RenderText(r, true, false, false)
 	if !strings.Contains(out, "No orphan markdown files found.") {
 		t.Fatalf("expected no orphan message, got: %s", out)
 	}
@@ -31,12 +31,27 @@ func TestRenderText_WithOrphans(t *testing.T) {
 		Orphans: []string{"a.md", "b.md"},
 		Summary: Summary{Orphans: 2},
 	}
-	out := RenderText(r, false)
+	out := RenderText(r, false, false, false)
 	if !strings.Contains(out, "Orphan markdown files (2):") {
 		t.Fatalf("expected orphan header, got: %s", out)
 	}
 	if !strings.Contains(out, "- a.md") || !strings.Contains(out, "- b.md") {
 		t.Fatalf("expected orphan items, got: %s", out)
+	}
+}
+
+func TestRenderText_WithWarningsAndGraph(t *testing.T) {
+	r := Result{
+		Warnings: []string{"unresolved local markdown link: a -> b"},
+		Graph:    "graph TD\n  \"a\" --> \"b\"",
+	}
+
+	out := RenderText(r, false, true, true)
+	if !strings.Contains(out, "Unresolved local links (1):") {
+		t.Fatalf("expected warnings section, got: %s", out)
+	}
+	if !strings.Contains(out, "Graph:") || !strings.Contains(out, `"a" --> "b"`) {
+		t.Fatalf("expected graph section, got: %s", out)
 	}
 }
 

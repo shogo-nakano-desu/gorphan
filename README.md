@@ -23,6 +23,9 @@ gorphan --root docs/index.md --dir docs
 - `--ignore` (optional, repeatable): ignore path prefix or glob.
 - `--format` (optional, default `text`): output format (`text` or `json`).
 - `--verbose` (optional): include summary diagnostics.
+- `--unresolved` (optional, default `warn`): unresolved-link handling (`warn`, `report`, `none`).
+- `--graph` (optional, default `none`): graph export mode (`none`, `dot`, `mermaid`).
+- `--config` (optional, default `.gorphan.yaml`): config file path.
 
 ### Examples
 
@@ -50,6 +53,18 @@ Verbose summary:
 gorphan --root docs/index.md --dir docs --verbose
 ```
 
+Report unresolved links in output:
+
+```bash
+gorphan --root docs/index.md --dir docs --unresolved report
+```
+
+Export graph (DOT):
+
+```bash
+gorphan --root docs/index.md --dir docs --graph dot
+```
+
 ## Output and Exit Codes
 
 - Exit code `0`: no orphan files found.
@@ -65,6 +80,26 @@ JSON format prints structured output with:
 - `summary` (`scanned`, `reachable`, `orphans`)
 
 Warnings for unresolved local markdown links are emitted to stderr and do not fail execution by themselves.
+
+## Config File (`.gorphan.yaml`)
+
+If `.gorphan.yaml` exists in the current working directory, `gorphan` uses it as default values.
+CLI flags override config values.
+
+Example:
+
+```yaml
+root: docs/index.md
+dir: docs
+ext: .md,.markdown
+ignore:
+  - drafts
+  - archive/*
+format: text
+verbose: false
+unresolved: warn
+graph: none
+```
 
 ## Local Pre-PR Quality Checks
 
@@ -83,3 +118,4 @@ go test ./...
 - Links without file extensions are ignored by default.
 - Absolute-path links are ignored.
 - Unresolved local links are warned but not treated as fatal errors.
+- Wikilinks are supported with `.md` fallback (`[[Page]]` -> `Page.md`).

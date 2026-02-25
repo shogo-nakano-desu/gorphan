@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -164,6 +165,83 @@ func TestRun_WarningIsNonFatal(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "warning: unresolved local markdown link:") {
 		t.Fatalf("expected unresolved warning, got: %s", stderr.String())
+	}
+}
+
+func TestRun_UnresolvedReportMode(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	mustWrite(t, root, "[missing](./missing.md)")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--unresolved", "report"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if strings.Contains(stderr.String(), "warning:") {
+		t.Fatalf("did not expect stderr warning in report mode, got: %s", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Unresolved local links (1):") {
+		t.Fatalf("expected unresolved report section, got: %s", stdout.String())
+	}
+}
+
+func TestRun_GraphDotMode(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	child := filepath.Join(docs, "child.md")
+	mustWrite(t, root, "[child](./child.md)")
+	mustWrite(t, child, "# child")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--graph", "dot"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "digraph gorphan {") {
+		t.Fatalf("expected dot graph output, got: %s", stdout.String())
+	}
+}
+
+func TestParseArgs_ConfigAndFlagOverride(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	mustWrite(t, root, "# root")
+	cfgPath := filepath.Join(dir, ".gorphan.yaml")
+	cfgContent := "root: docs/index.md\ndir: docs\nignore:\n  - drafts\nformat: json\nunresolved: report\ngraph: mermaid\n"
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	defer func() { _ = os.Chdir(cwd) }()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	cfg, err := parseArgs([]string{"--config", cfgPath, "--ignore", "archive/*", "--format", "text", "--graph", "dot"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("parseArgs failed: %v", err)
+	}
+	if cfg.Format != "text" {
+		t.Fatalf("expected flag override for format, got: %s", cfg.Format)
+	}
+	if cfg.GraphFormat != "dot" {
+		t.Fatalf("expected flag override for graph format, got: %s", cfg.GraphFormat)
+	}
+	if cfg.Unresolved != "report" {
+		t.Fatalf("expected unresolved from config, got: %s", cfg.Unresolved)
+	}
+	if !reflect.DeepEqual(cfg.Ignore, []string{"drafts", "archive/*"}) {
+		t.Fatalf("unexpected merged ignore list: %#v", cfg.Ignore)
 	}
 }
 

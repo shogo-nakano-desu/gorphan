@@ -1,6 +1,7 @@
 # Binaries
 /bin/
 /dist/
+/gorphan
 *.exe
 *.exe~
 *.dll

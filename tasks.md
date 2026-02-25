@@ -106,11 +106,11 @@ This task list is derived from [plan.md](./plan.md) and is organized for impleme
 - [x] Document future enhancements as non-goals for v1.
 
 ## Optional Backlog (Post-v1)
-- [ ] Wikilink support (`[[Page]]`).
-- [ ] Unresolved-link reporting mode.
-- [ ] Graph export (dot/mermaid).
-- [ ] Parallel parsing for large repositories.
-- [ ] Config file support (`.gorphan.yaml`).
+- [x] Wikilink support (`[[Page]]`).
+- [x] Unresolved-link reporting mode.
+- [x] Graph export (dot/mermaid).
+- [x] Parallel parsing for large repositories.
+- [x] Config file support (`.gorphan.yaml`).
 
 ## Phase 9: CI Quality Gates
 - [x] Add formatter check in GitHub Actions using `gofmt -l .`.
