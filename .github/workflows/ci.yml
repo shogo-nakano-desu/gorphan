@@ -14,6 +14,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Run gorphan action
+        id: gorphan
+        uses: ./
+        with:
+          root: docs/architecture.md
+          dir: docs
+          format: json
+          fail-on-orphans: false
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -35,3 +44,8 @@ jobs:
 
       - name: Run tests
         run: go test ./...
+
+      - name: Print gorphan outputs
+        run: |
+          echo "gorphan exit-code=${{ steps.gorphan.outputs.exit-code }}"
+          echo "gorphan has-orphans=${{ steps.gorphan.outputs.has-orphans }}"

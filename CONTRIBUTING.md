@@ -59,10 +59,24 @@ Expected:
 - Include sample command/output when CLI behavior changes.
 
 ## Commit Style
-Use direct, imperative messages:
-- `Add mermaid graph export`
-- `Fix parser escaped-space handling`
-- `Make --dir optional with default current directory`
+Use Conventional Commits for every commit message.
+
+Format:
+- `<type>(<optional-scope>): <description>`
+
+Allowed `type` values:
+- `feat`: new user-facing feature
+- `fix`: bug fix
+- `docs`: documentation-only change
+- `test`: tests added or updated
+- `refactor`: code change without behavior change
+- `ci`: CI/workflow changes
+- `chore`: maintenance/tooling work
+
+Examples:
+- `feat(graph): add mermaid export mode`
+- `fix(parser): handle escaped spaces in links`
+- `docs(readme): add GitHub Action usage`
 
 ## Reporting Issues
 When filing a bug, include:
