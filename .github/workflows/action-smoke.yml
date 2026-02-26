@@ -26,3 +26,8 @@ jobs:
         run: |
           echo "exit-code=${{ steps.gorphan.outputs.exit-code }}"
           echo "has-orphans=${{ steps.gorphan.outputs.has-orphans }}"
+
+      - name: Assert non-blocking orphan mode
+        run: |
+          test "${{ steps.gorphan.outputs.exit-code }}" = "1"
+          test "${{ steps.gorphan.outputs.has-orphans }}" = "true"

@@ -11,7 +11,13 @@ verbose="${INPUT_VERBOSE:-false}"
 unresolved="${INPUT_UNRESOLVED:-warn}"
 graph="${INPUT_GRAPH:-none}"
 config="${INPUT_CONFIG:-}"
-fail_on_orphans="${INPUT_FAIL_ON_ORPHANS:-true}"
+fail_on_orphans="${INPUT_FAIL_ON_ORPHANS:-}"
+if [ -z "$fail_on_orphans" ]; then
+  fail_on_orphans="$(printenv "INPUT_FAIL-ON-ORPHANS" 2>/dev/null || true)"
+fi
+if [ -z "$fail_on_orphans" ]; then
+  fail_on_orphans="true"
+fi
 
 if [ -z "$root" ]; then
   echo "error: input 'root' is required" >&2
