@@ -6,9 +6,10 @@ root="${INPUT_ROOT:-}"
 dir="${INPUT_DIR:-.}"
 ext="${INPUT_EXT:-.md,.markdown}"
 ignore="${INPUT_IGNORE:-}"
+ignore_check_files="${INPUT_IGNORE_CHECK_FILES:-}"
 format="${INPUT_FORMAT:-text}"
 verbose="${INPUT_VERBOSE:-false}"
-unresolved="${INPUT_UNRESOLVED:-warn}"
+unresolved="${INPUT_UNRESOLVED:-fail}"
 graph="${INPUT_GRAPH:-none}"
 config="${INPUT_CONFIG:-}"
 fail_on_orphans="${INPUT_FAIL_ON_ORPHANS:-}"
@@ -43,6 +44,20 @@ if [ -n "$ignore" ]; then
   for pattern in $ignore_lines; do
     if [ -n "$pattern" ]; then
       set -- "$@" --ignore "$pattern"
+    fi
+  done
+  IFS=$OLDIFS
+fi
+
+# Support newline or comma separated ignore-check file entries.
+if [ -n "$ignore_check_files" ]; then
+  ignore_check_lines=$(printf "%s\n" "$ignore_check_files" | tr ',' '\n')
+  OLDIFS=$IFS
+  IFS='
+'
+  for rule in $ignore_check_lines; do
+    if [ -n "$rule" ]; then
+      set -- "$@" --ignore-check-file "$rule"
     fi
   done
   IFS=$OLDIFS

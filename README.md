@@ -21,6 +21,7 @@ An orphan markdown file is a markdown file that is not reachable from a given ro
   - wikilinks (`[[Page]]`, `[[path/file.md]]`, `[[Page|Alias]]`)
 - Reachability analysis from a root page.
 - Orphan detection with human-readable or JSON output.
+- Configurable orphan-check exclusions by path or basename.
 - Unresolved link handling modes (`fail`, `warn`, `report`, `none`).
 - Optional graph export (`dot`, `mermaid`).
 - Optional `.gorphan.yaml` config with CLI override.
@@ -73,6 +74,7 @@ Useful inputs:
 - `root` (required)
 - `dir` (default `.`)
 - `ignore` (newline or comma separated patterns)
+- `ignore-check-files` (newline or comma separated file paths or basenames)
 - `format` (`text` or `json`)
 - `unresolved` (`fail`, `warn`, `report`, `none`)
 - `graph` (`none`, `dot`, `mermaid`)
@@ -101,6 +103,7 @@ gorphan --root <root.md> [--dir <path>] [options]
 - `--dir` (optional, default current directory): scan target.
 - `--ext` (optional, default `.md,.markdown`): comma-separated markdown extensions.
 - `--ignore` (optional, repeatable): ignore path prefix or glob.
+- `--ignore-check-file` (optional, repeatable): ignore orphan check for file by relative path or basename.
 - `--format` (optional, default `text`): `text` or `json`.
 - `--verbose` (optional): include diagnostics summary.
 - `--unresolved` (optional, default `fail`): unresolved-link handling (`fail`, `warn`, `report`, `none`).
@@ -145,6 +148,12 @@ Suppress unresolved warnings:
 gorphan --root docs/architecture.md --dir docs --unresolved none
 ```
 
+Ignore orphan checks for specific files:
+
+```bash
+gorphan --root docs/architecture.md --dir docs --ignore-check-file docs/private.md --ignore-check-file draft.md
+```
+
 Export graph:
 
 ```bash
@@ -183,6 +192,9 @@ ext: .md,.markdown
 ignore:
   - drafts
   - archive/*
+ignore-check-files:
+  - docs/private.md
+  - draft.md
 format: text
 verbose: false
 unresolved: fail

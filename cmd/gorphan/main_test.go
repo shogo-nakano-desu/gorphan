@@ -263,6 +263,44 @@ func TestRun_UnresolvedWarnMode(t *testing.T) {
 	}
 }
 
+func TestRun_IgnoreCheckFileByBasename(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	ignoredOrphan := filepath.Join(docs, "private.md")
+	mustWrite(t, root, "# root")
+	mustWrite(t, ignoredOrphan, "# private")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--ignore-check-file", "private.md"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0 when orphan is ignored by basename, got %d; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "No orphan markdown files found.") {
+		t.Fatalf("expected no-orphan output, got: %s", stdout.String())
+	}
+}
+
+func TestRun_IgnoreCheckFileByRelativePath(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	ignoredOrphan := filepath.Join(docs, "drafts", "private.md")
+	mustWrite(t, root, "# root")
+	mustWrite(t, ignoredOrphan, "# private")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--ignore-check-file", "drafts/private.md"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0 when orphan is ignored by path, got %d; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "No orphan markdown files found.") {
+		t.Fatalf("expected no-orphan output, got: %s", stdout.String())
+	}
+}
+
 func TestRun_GraphDotMode(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
@@ -288,7 +326,7 @@ func TestParseArgs_ConfigAndFlagOverride(t *testing.T) {
 	root := filepath.Join(docs, "index.md")
 	mustWrite(t, root, "# root")
 	cfgPath := filepath.Join(dir, ".gorphan.yaml")
-	cfgContent := "root: docs/index.md\ndir: docs\nignore:\n  - drafts\nformat: json\nunresolved: report\ngraph: mermaid\n"
+	cfgContent := "root: docs/index.md\ndir: docs\nignore:\n  - drafts\nignore-check-files:\n  - private.md\nformat: json\nunresolved: report\ngraph: mermaid\n"
 	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
 		t.Fatalf("write config failed: %v", err)
 	}
@@ -314,6 +352,9 @@ func TestParseArgs_ConfigAndFlagOverride(t *testing.T) {
 	}
 	if cfg.Unresolved != "report" {
 		t.Fatalf("expected unresolved from config, got: %s", cfg.Unresolved)
+	}
+	if !reflect.DeepEqual(cfg.IgnoreCheckFiles, []string{"private.md"}) {
+		t.Fatalf("expected ignore-check-files from config, got: %#v", cfg.IgnoreCheckFiles)
 	}
 	if !reflect.DeepEqual(cfg.Ignore, []string{"drafts", "archive/*"}) {
 		t.Fatalf("unexpected merged ignore list: %#v", cfg.Ignore)

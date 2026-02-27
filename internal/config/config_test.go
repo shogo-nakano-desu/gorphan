@@ -27,6 +27,9 @@ ext: .md,.markdown
 ignore:
   - drafts
   - archive/*
+ignore-check-files:
+  - docs/private.md
+  - notes.md
 format: json
 verbose: true
 unresolved: report
@@ -48,6 +51,9 @@ graph: mermaid
 	}
 	if !reflect.DeepEqual(cfg.Ignore, []string{"drafts", "archive/*"}) {
 		t.Fatalf("unexpected ignore list: %#v", cfg.Ignore)
+	}
+	if !reflect.DeepEqual(cfg.IgnoreCheckFiles, []string{"docs/private.md", "notes.md"}) {
+		t.Fatalf("unexpected ignore-check-files list: %#v", cfg.IgnoreCheckFiles)
 	}
 	if cfg.Verbose == nil || *cfg.Verbose != true {
 		t.Fatalf("expected verbose=true, got %#v", cfg.Verbose)

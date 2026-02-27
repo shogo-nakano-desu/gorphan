@@ -18,6 +18,10 @@ inputs:
     description: "Ignore path prefixes or globs (newline or comma separated)."
     required: false
     default: ""
+  ignore-check-files:
+    description: "Ignore orphan checks for files by relative path or basename (newline or comma separated)."
+    required: false
+    default: ""
   format:
     description: "Output format: text or json."
     required: false

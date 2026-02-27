@@ -19,4 +19,5 @@ This file is the root map of Markdown documents in this repository.
 
 ## Workflow Rule
 - Always create a git commit immediately after completing each implementation phase.
+- After making a change, commit the change.
 - Always add or update tests when implementing a new feature or fixing a bug.

@@ -12,14 +12,15 @@ import (
 const DefaultConfigPath = ".gorphan.yaml"
 
 type FileConfig struct {
-	Root       string
-	Dir        string
-	Ext        string
-	Ignore     []string
-	Format     string
-	Verbose    *bool
-	Unresolved string
-	Graph      string
+	Root             string
+	Dir              string
+	Ext              string
+	Ignore           []string
+	IgnoreCheckFiles []string
+	Format           string
+	Verbose          *bool
+	Unresolved       string
+	Graph            string
 }
 
 func FindConfigArg(args []string) (path string, explicit bool, err error) {
@@ -74,6 +75,8 @@ func parseYAML(content string) (FileConfig, error) {
 		if strings.HasPrefix(line, "- ") {
 			if currentList == "ignore" {
 				cfg.Ignore = append(cfg.Ignore, strings.TrimSpace(strings.TrimPrefix(line, "- ")))
+			} else if currentList == "ignore-check-files" {
+				cfg.IgnoreCheckFiles = append(cfg.IgnoreCheckFiles, strings.TrimSpace(strings.TrimPrefix(line, "- ")))
 			}
 			continue
 		}
@@ -98,6 +101,11 @@ func parseYAML(content string) (FileConfig, error) {
 			currentList = "ignore"
 			if value != "" {
 				cfg.Ignore = append(cfg.Ignore, value)
+			}
+		case "ignore-check-files":
+			currentList = "ignore-check-files"
+			if value != "" {
+				cfg.IgnoreCheckFiles = append(cfg.IgnoreCheckFiles, value)
 			}
 		case "format":
 			cfg.Format = value
