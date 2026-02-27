@@ -60,6 +60,7 @@ Expected:
 
 ## Commit Style
 Use Conventional Commits for every commit message.
+Do not use `git commit --no-verify`; fix hook failures instead of bypassing checks.
 
 Format:
 - `<type>(<optional-scope>): <description>`
