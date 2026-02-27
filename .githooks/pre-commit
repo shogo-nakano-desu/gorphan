@@ -13,11 +13,18 @@ gofmt -w .
 echo "pre-commit: staging gofmt updates"
 git add -A
 
+LINT_CMD=""
 if command -v golangci-lint >/dev/null 2>&1; then
-  echo "pre-commit: running golangci-lint run"
-  golangci-lint run
+  LINT_CMD="golangci-lint"
+elif [ -x "$HOME/go/bin/golangci-lint" ]; then
+  LINT_CMD="$HOME/go/bin/golangci-lint"
 else
-  echo "pre-commit: golangci-lint not found; skipping lint (install: https://golangci-lint.run/welcome/install/)" >&2
+  echo "pre-commit: golangci-lint is required but not found in PATH or \$HOME/go/bin" >&2
+  echo "pre-commit: install from https://golangci-lint.run/welcome/install/" >&2
+  exit 1
 fi
+
+echo "pre-commit: running ${LINT_CMD} run"
+"$LINT_CMD" run
 
 echo "pre-commit: checks passed"
