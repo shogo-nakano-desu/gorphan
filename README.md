@@ -21,7 +21,7 @@ An orphan markdown file is a markdown file that is not reachable from a given ro
   - wikilinks (`[[Page]]`, `[[path/file.md]]`, `[[Page|Alias]]`)
 - Reachability analysis from a root page.
 - Orphan detection with human-readable or JSON output.
-- Unresolved link handling modes (`warn`, `report`, `none`).
+- Unresolved link handling modes (`fail`, `warn`, `report`, `none`).
 - Optional graph export (`dot`, `mermaid`).
 - Optional `.gorphan.yaml` config with CLI override.
 
@@ -74,7 +74,7 @@ Useful inputs:
 - `dir` (default `.`)
 - `ignore` (newline or comma separated patterns)
 - `format` (`text` or `json`)
-- `unresolved` (`warn`, `report`, `none`)
+- `unresolved` (`fail`, `warn`, `report`, `none`)
 - `graph` (`none`, `dot`, `mermaid`)
 - `fail-on-orphans` (`true` or `false`)
 
@@ -103,7 +103,7 @@ gorphan --root <root.md> [--dir <path>] [options]
 - `--ignore` (optional, repeatable): ignore path prefix or glob.
 - `--format` (optional, default `text`): `text` or `json`.
 - `--verbose` (optional): include diagnostics summary.
-- `--unresolved` (optional, default `warn`): unresolved-link handling (`warn`, `report`, `none`).
+- `--unresolved` (optional, default `fail`): unresolved-link handling (`fail`, `warn`, `report`, `none`).
 - `--graph` (optional, default `none`): graph export mode (`none`, `dot`, `mermaid`).
 - `--config` (optional, default `.gorphan.yaml`): explicit config file path.
 
@@ -133,6 +133,12 @@ Report unresolved links in output:
 gorphan --root docs/architecture.md --dir docs --unresolved report
 ```
 
+Warn on unresolved links without failing:
+
+```bash
+gorphan --root docs/architecture.md --dir docs --unresolved warn
+```
+
 Suppress unresolved warnings:
 
 ```bash
@@ -149,7 +155,7 @@ gorphan --root docs/architecture.md --dir docs --graph mermaid
 ## Output and Exit Codes
 
 - Exit code `0`: no orphan files found.
-- Exit code `1`: orphan files found.
+- Exit code `1`: orphan files found or unresolved links found in `fail` mode.
 - Exit code `2`: usage/runtime error.
 
 Text output:
@@ -179,7 +185,7 @@ ignore:
   - archive/*
 format: text
 verbose: false
-unresolved: warn
+unresolved: fail
 graph: none
 ```
 

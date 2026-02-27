@@ -27,9 +27,9 @@ inputs:
     required: false
     default: "false"
   unresolved:
-    description: "Unresolved link mode: warn, report, none."
+    description: "Unresolved link mode: fail, warn, report, none."
     required: false
-    default: "warn"
+    default: "fail"
   graph:
     description: "Graph export mode: none, dot, mermaid."
     required: false

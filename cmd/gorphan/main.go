@@ -148,12 +148,22 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 	}
 
 	warnings := append([]string(nil), linkGraph.Warnings...)
+	unresolvedFailed := false
 	switch cfg.Unresolved {
 	case "none":
 		warnings = nil
 	case "warn":
 		for _, warning := range warnings {
 			if _, writeErr := fmt.Fprintf(stderr, "warning: %s\n", warning); writeErr != nil {
+				return 2
+			}
+		}
+	case "fail":
+		if len(warnings) > 0 {
+			unresolvedFailed = true
+		}
+		for _, warning := range warnings {
+			if _, writeErr := fmt.Fprintf(stderr, "error: %s\n", warning); writeErr != nil {
 				return 2
 			}
 		}
@@ -192,7 +202,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 	}
 
-	if len(analysis.Orphans) > 0 {
+	if len(analysis.Orphans) > 0 || unresolvedFailed {
 		return 1
 	}
 	return 0
@@ -230,7 +240,7 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 		cfg.Format = "text"
 	}
 	if cfg.Unresolved == "" {
-		cfg.Unresolved = "warn"
+		cfg.Unresolved = "fail"
 	}
 	if cfg.GraphFormat == "" {
 		cfg.GraphFormat = "none"
@@ -244,7 +254,7 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.Var(&ignores, "ignore", "ignore path prefix or glob (repeatable)")
 	fs.StringVar(&cfg.Format, "format", cfg.Format, "output format: text or json")
 	fs.BoolVar(&cfg.Verbose, "verbose", cfg.Verbose, "print validation diagnostics")
-	fs.StringVar(&cfg.Unresolved, "unresolved", cfg.Unresolved, "unresolved-link mode: warn, report, none")
+	fs.StringVar(&cfg.Unresolved, "unresolved", cfg.Unresolved, "unresolved-link mode: fail, warn, report, none")
 	fs.StringVar(&cfg.GraphFormat, "graph", cfg.GraphFormat, "graph export mode: none, dot, mermaid")
 	fs.StringVar(&cfg.ConfigPath, "config", cfg.ConfigPath, "optional config file path")
 	fs.Usage = func() {
@@ -282,8 +292,8 @@ func validateAndNormalize(cfg *config) error {
 		return fmt.Errorf("--format must be one of: text, json")
 	}
 	cfg.Unresolved = strings.ToLower(strings.TrimSpace(cfg.Unresolved))
-	if cfg.Unresolved != "warn" && cfg.Unresolved != "report" && cfg.Unresolved != "none" {
-		return fmt.Errorf("--unresolved must be one of: warn, report, none")
+	if cfg.Unresolved != "fail" && cfg.Unresolved != "warn" && cfg.Unresolved != "report" && cfg.Unresolved != "none" {
+		return fmt.Errorf("--unresolved must be one of: fail, warn, report, none")
 	}
 	cfg.GraphFormat = strings.ToLower(strings.TrimSpace(cfg.GraphFormat))
 	if cfg.GraphFormat != "none" && cfg.GraphFormat != "dot" && cfg.GraphFormat != "mermaid" {

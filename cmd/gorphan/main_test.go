@@ -209,7 +209,7 @@ func TestRun_JSONFormat(t *testing.T) {
 	}
 }
 
-func TestRun_WarningIsNonFatal(t *testing.T) {
+func TestRun_DefaultUnresolvedFailMode(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
@@ -218,11 +218,11 @@ func TestRun_WarningIsNonFatal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := run([]string{"--root", root, "--dir", docs}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("expected exit code 0 (no orphan files), got %d", code)
+	if code != 1 {
+		t.Fatalf("expected exit code 1 for unresolved links in default fail mode, got %d", code)
 	}
-	if !strings.Contains(stderr.String(), "warning: unresolved local markdown link:") {
-		t.Fatalf("expected unresolved warning, got: %s", stderr.String())
+	if !strings.Contains(stderr.String(), "error: unresolved local markdown link:") {
+		t.Fatalf("expected unresolved error, got: %s", stderr.String())
 	}
 }
 
@@ -243,6 +243,23 @@ func TestRun_UnresolvedReportMode(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "Unresolved local links (1):") {
 		t.Fatalf("expected unresolved report section, got: %s", stdout.String())
+	}
+}
+
+func TestRun_UnresolvedWarnMode(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	mustWrite(t, root, "[missing](./missing.md)")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--unresolved", "warn"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0 in warn mode, got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "warning: unresolved local markdown link:") {
+		t.Fatalf("expected unresolved warning, got: %s", stderr.String())
 	}
 }
 
