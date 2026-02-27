@@ -14,6 +14,11 @@ type Options struct {
 	Ignore     []string
 }
 
+type ignoreMatcher struct {
+	globs    []string
+	prefixes []string
+}
+
 func NormalizeExtensions(raw string) []string {
 	parts := strings.Split(raw, ",")
 	seen := make(map[string]struct{}, len(parts))
@@ -60,6 +65,7 @@ func Scan(opts Options) ([]string, error) {
 			extSet[ext] = struct{}{}
 		}
 	}
+	ignore := compileIgnoreRules(opts.Ignore)
 
 	files := make([]string, 0)
 	err = filepath.WalkDir(absDir, func(path string, d fs.DirEntry, walkErr error) error {
@@ -73,7 +79,7 @@ func Scan(opts Options) ([]string, error) {
 		}
 		rel = filepath.Clean(rel)
 
-		if rel != "." && isIgnored(rel, opts.Ignore) {
+		if rel != "." && ignore.matches(rel) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -88,11 +94,7 @@ func Scan(opts Options) ([]string, error) {
 			return nil
 		}
 
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-		files = append(files, filepath.Clean(absPath))
+		files = append(files, filepath.Clean(path))
 		return nil
 	})
 	if err != nil {
@@ -103,28 +105,45 @@ func Scan(opts Options) ([]string, error) {
 	return files, nil
 }
 
-func isIgnored(rel string, rules []string) bool {
-	if rel == "." || len(rules) == 0 {
-		return false
+func compileIgnoreRules(rules []string) ignoreMatcher {
+	matcher := ignoreMatcher{}
+	if len(rules) == 0 {
+		return matcher
 	}
 
-	relSlash := filepath.ToSlash(rel)
+	matcher.globs = make([]string, 0, len(rules))
+	matcher.prefixes = make([]string, 0, len(rules))
 	for _, raw := range rules {
 		rule := strings.TrimSpace(raw)
 		if rule == "" {
 			continue
 		}
 		rule = filepath.ToSlash(filepath.Clean(rule))
-
-		if hasGlob(rule) {
-			matched, err := filepath.Match(rule, relSlash)
-			if err == nil && matched {
-				return true
-			}
+		if rule == "." {
 			continue
 		}
+		if hasGlob(rule) {
+			matcher.globs = append(matcher.globs, rule)
+			continue
+		}
+		matcher.prefixes = append(matcher.prefixes, strings.TrimSuffix(rule, "/"))
+	}
+	return matcher
+}
 
-		rule = strings.TrimSuffix(rule, "/")
+func (m ignoreMatcher) matches(rel string) bool {
+	if rel == "." || (len(m.globs) == 0 && len(m.prefixes) == 0) {
+		return false
+	}
+
+	relSlash := filepath.ToSlash(rel)
+	for _, rule := range m.globs {
+		matched, err := filepath.Match(rule, relSlash)
+		if err == nil && matched {
+			return true
+		}
+	}
+	for _, rule := range m.prefixes {
 		if relSlash == rule || strings.HasPrefix(relSlash, rule+"/") {
 			return true
 		}

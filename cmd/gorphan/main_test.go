@@ -76,6 +76,42 @@ func TestParseArgsAndValidate_RootOutsideDir(t *testing.T) {
 	}
 }
 
+func TestParseArgs_WorkersFlag(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	mustWrite(t, root, "# root")
+
+	cfg, err := parseArgs([]string{"--root", root, "--dir", dir, "--workers", "3"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("parseArgs failed: %v", err)
+	}
+	if cfg.Workers != 3 {
+		t.Fatalf("unexpected workers value: %d", cfg.Workers)
+	}
+}
+
+func TestParseArgs_WorkersFlagRejectsNegative(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	mustWrite(t, root, "# root")
+
+	_, err := parseArgs([]string{"--root", root, "--dir", dir, "--workers", "-1"}, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "--workers must be >= 0") {
+		t.Fatalf("expected workers validation error, got: %v", err)
+	}
+}
+
+func TestParseArgs_MaxGraphNodesRejectsNegative(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "index.md")
+	mustWrite(t, root, "# root")
+
+	_, err := parseArgs([]string{"--root", root, "--dir", dir, "--max-graph-nodes", "-1"}, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "--max-graph-nodes must be >= 0") {
+		t.Fatalf("expected max-graph-nodes validation error, got: %v", err)
+	}
+}
+
 func TestRun_ValidInput(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
@@ -317,6 +353,28 @@ func TestRun_GraphDotMode(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "digraph gorphan {") {
 		t.Fatalf("expected dot graph output, got: %s", stdout.String())
+	}
+}
+
+func TestRun_GraphExportSkippedWhenNodeLimitExceeded(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	root := filepath.Join(docs, "index.md")
+	child := filepath.Join(docs, "child.md")
+	mustWrite(t, root, "[child](./child.md)")
+	mustWrite(t, child, "# child")
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"--root", root, "--dir", docs, "--graph", "dot", "--max-graph-nodes", "1"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d; stderr=%s", code, stderr.String())
+	}
+	if strings.Contains(stdout.String(), "digraph gorphan {") {
+		t.Fatalf("expected graph output to be skipped, got: %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "warning: graph export skipped:") {
+		t.Fatalf("expected graph skip warning, got: %s", stderr.String())
 	}
 }
 

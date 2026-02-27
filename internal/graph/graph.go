@@ -17,6 +17,7 @@ type Options struct {
 	ScanDir    string
 	Files      []string
 	Extensions []string
+	MaxWorkers int
 }
 
 type Graph struct {
@@ -30,6 +31,11 @@ type Analysis struct {
 	Orphans         []string
 	OrphansRelative []string
 	ReachableSet    map[string]struct{}
+}
+
+type pathIndex struct {
+	idByPath map[string]int
+	paths    []string
 }
 
 type edgeBuildResult struct {
@@ -82,6 +88,9 @@ func Build(opts Options) (*Graph, error) {
 
 	results := make(chan edgeBuildResult, len(sources))
 	workerCount := runtime.GOMAXPROCS(0)
+	if opts.MaxWorkers > 0 && workerCount > opts.MaxWorkers {
+		workerCount = opts.MaxWorkers
+	}
 	if workerCount < 1 {
 		workerCount = 1
 	}
@@ -181,32 +190,52 @@ func Analyze(g *Graph, scanDir string, allFiles []string) (*Analysis, error) {
 	}
 	scanDirAbs = filepath.Clean(scanDirAbs)
 
-	inventory := make(map[string]struct{}, len(allFiles))
+	index := pathIndex{
+		idByPath: make(map[string]int, len(allFiles)+len(g.Adjacency)),
+		paths:    make([]string, 0, len(allFiles)+len(g.Adjacency)),
+	}
+	inventory := make(map[int]struct{}, len(allFiles))
+	inventoryIDs := make([]int, 0, len(allFiles))
 	for _, file := range allFiles {
 		abs, err := filepath.Abs(file)
 		if err != nil {
 			return nil, fmt.Errorf("resolve file path %q: %w", file, err)
 		}
-		inventory[filepath.Clean(abs)] = struct{}{}
+		id := index.intern(filepath.Clean(abs))
+		if _, ok := inventory[id]; ok {
+			continue
+		}
+		inventory[id] = struct{}{}
+		inventoryIDs = append(inventoryIDs, id)
 	}
-	if _, ok := inventory[g.Root]; !ok {
+	rootID := index.intern(g.Root)
+	if _, ok := inventory[rootID]; !ok {
 		return nil, fmt.Errorf("root markdown file is not in scan result: %s", g.Root)
 	}
 
-	reachableSet := traverseReachable(g.Root, g.Adjacency)
+	adjacencyIDs := make(map[int][]int, len(g.Adjacency))
+	for src, targets := range g.Adjacency {
+		srcID := index.intern(src)
+		dstIDs := make([]int, 0, len(targets))
+		for _, target := range targets {
+			dstIDs = append(dstIDs, index.intern(target))
+		}
+		adjacencyIDs[srcID] = dstIDs
+	}
+
+	reachableIDs := traverseReachableIDs(rootID, adjacencyIDs)
+	reachableSet := make(map[string]struct{}, len(reachableIDs))
+	for id := range reachableIDs {
+		reachableSet[index.path(id)] = struct{}{}
+	}
 	reachable := toSortedSlice(reachableSet)
 
 	orphans := make([]string, 0)
-	for _, file := range allFiles {
-		abs, err := filepath.Abs(file)
-		if err != nil {
-			return nil, fmt.Errorf("resolve file path %q: %w", file, err)
-		}
-		abs = filepath.Clean(abs)
-		if _, ok := reachableSet[abs]; ok {
+	for _, id := range inventoryIDs {
+		if _, ok := reachableIDs[id]; ok {
 			continue
 		}
-		orphans = append(orphans, abs)
+		orphans = append(orphans, index.path(id))
 	}
 	sort.Strings(orphans)
 
@@ -253,9 +282,9 @@ func buildExtSet(extensions []string) map[string]struct{} {
 	return set
 }
 
-func traverseReachable(root string, adjacency map[string][]string) map[string]struct{} {
-	visited := make(map[string]struct{})
-	stack := []string{root}
+func traverseReachableIDs(root int, adjacency map[int][]int) map[int]struct{} {
+	visited := make(map[int]struct{})
+	stack := []int{root}
 
 	for len(stack) > 0 {
 		n := len(stack) - 1
@@ -276,6 +305,20 @@ func traverseReachable(root string, adjacency map[string][]string) map[string]st
 		}
 	}
 	return visited
+}
+
+func (i *pathIndex) intern(path string) int {
+	if id, ok := i.idByPath[path]; ok {
+		return id
+	}
+	id := len(i.paths)
+	i.idByPath[path] = id
+	i.paths = append(i.paths, path)
+	return id
+}
+
+func (i *pathIndex) path(id int) string {
+	return i.paths[id]
 }
 
 func toSortedSlice(set map[string]struct{}) []string {
@@ -304,6 +347,10 @@ func ExportDOT(g *Graph, scanDir string) (string, error) {
 	if g == nil {
 		return "", fmt.Errorf("graph is required")
 	}
+	scanDirAbs, err := normalizedScanDir(scanDir)
+	if err != nil {
+		return "", err
+	}
 	nodes := make([]string, 0, len(g.Adjacency))
 	for node := range g.Adjacency {
 		nodes = append(nodes, node)
@@ -312,7 +359,7 @@ func ExportDOT(g *Graph, scanDir string) (string, error) {
 
 	lines := []string{"digraph gorphan {"}
 	for _, src := range nodes {
-		srcLabel, err := relativeLabel(scanDir, src)
+		srcLabel, err := relativeLabel(scanDirAbs, src)
 		if err != nil {
 			return "", err
 		}
@@ -321,7 +368,7 @@ func ExportDOT(g *Graph, scanDir string) (string, error) {
 			continue
 		}
 		for _, dst := range g.Adjacency[src] {
-			dstLabel, err := relativeLabel(scanDir, dst)
+			dstLabel, err := relativeLabel(scanDirAbs, dst)
 			if err != nil {
 				return "", err
 			}
@@ -336,6 +383,10 @@ func ExportMermaid(g *Graph, scanDir string) (string, error) {
 	if g == nil {
 		return "", fmt.Errorf("graph is required")
 	}
+	scanDirAbs, err := normalizedScanDir(scanDir)
+	if err != nil {
+		return "", err
+	}
 	nodes := make([]string, 0, len(g.Adjacency))
 	for node := range g.Adjacency {
 		nodes = append(nodes, node)
@@ -344,7 +395,7 @@ func ExportMermaid(g *Graph, scanDir string) (string, error) {
 
 	lines := []string{"graph TD"}
 	for _, src := range nodes {
-		srcLabel, err := relativeLabel(scanDir, src)
+		srcLabel, err := relativeLabel(scanDirAbs, src)
 		if err != nil {
 			return "", err
 		}
@@ -353,7 +404,7 @@ func ExportMermaid(g *Graph, scanDir string) (string, error) {
 			continue
 		}
 		for _, dst := range g.Adjacency[src] {
-			dstLabel, err := relativeLabel(scanDir, dst)
+			dstLabel, err := relativeLabel(scanDirAbs, dst)
 			if err != nil {
 				return "", err
 			}
@@ -363,15 +414,22 @@ func ExportMermaid(g *Graph, scanDir string) (string, error) {
 	return strings.Join(lines, "\n"), nil
 }
 
-func relativeLabel(scanDir, abs string) (string, error) {
+func normalizedScanDir(scanDir string) (string, error) {
 	if strings.TrimSpace(scanDir) == "" {
-		return filepath.ToSlash(abs), nil
+		return "", nil
 	}
 	scanDirAbs, err := filepath.Abs(scanDir)
 	if err != nil {
 		return "", fmt.Errorf("resolve scan dir: %w", err)
 	}
-	rel, err := filepath.Rel(filepath.Clean(scanDirAbs), abs)
+	return filepath.Clean(scanDirAbs), nil
+}
+
+func relativeLabel(scanDirAbs, abs string) (string, error) {
+	if scanDirAbs == "" {
+		return filepath.ToSlash(abs), nil
+	}
+	rel, err := filepath.Rel(scanDirAbs, abs)
 	if err != nil {
 		return "", fmt.Errorf("make relative label: %w", err)
 	}

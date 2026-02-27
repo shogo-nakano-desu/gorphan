@@ -36,6 +36,8 @@ type config struct {
 	Verbose          bool
 	Unresolved       string
 	GraphFormat      string
+	Workers          int
+	MaxGraphNodes    int
 	ConfigPath       string
 }
 
@@ -72,6 +74,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		ScanDir:    cfg.Dir,
 		Files:      files,
 		Extensions: extensions,
+		MaxWorkers: cfg.Workers,
 	})
 	if err != nil {
 		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
@@ -102,17 +105,25 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 	graphText := ""
-	switch cfg.GraphFormat {
-	case "dot":
-		graphText, err = graph.ExportDOT(linkGraph, cfg.Dir)
-	case "mermaid":
-		graphText, err = graph.ExportMermaid(linkGraph, cfg.Dir)
-	}
-	if err != nil {
-		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+	graphNodeCount := len(linkGraph.Adjacency)
+	graphLimited := cfg.GraphFormat != "none" && cfg.MaxGraphNodes > 0 && graphNodeCount > cfg.MaxGraphNodes
+	if graphLimited {
+		if _, writeErr := fmt.Fprintf(stderr, "warning: graph export skipped: node count %d exceeds --max-graph-nodes=%d\n", graphNodeCount, cfg.MaxGraphNodes); writeErr != nil {
 			return 2
 		}
-		return 2
+	} else {
+		switch cfg.GraphFormat {
+		case "dot":
+			graphText, err = graph.ExportDOT(linkGraph, cfg.Dir)
+		case "mermaid":
+			graphText, err = graph.ExportMermaid(linkGraph, cfg.Dir)
+		}
+		if err != nil {
+			if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+				return 2
+			}
+			return 2
+		}
 	}
 
 	if cfg.Verbose {
@@ -145,6 +156,12 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 2
 		}
 		if writeErr := writef(stdout, "- graph: %s\n", cfg.GraphFormat); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- max-graph-nodes: %d\n", cfg.MaxGraphNodes); writeErr != nil {
+			return 2
+		}
+		if writeErr := writef(stdout, "- workers: %d\n", cfg.Workers); writeErr != nil {
 			return 2
 		}
 		if writeErr := writef(stdout, "- scanned markdown files: %d\n", len(files)); writeErr != nil {
@@ -267,6 +284,12 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	if cfg.GraphFormat == "" {
 		cfg.GraphFormat = "none"
 	}
+	if cfg.Workers < 0 {
+		cfg.Workers = 0
+	}
+	if cfg.MaxGraphNodes < 0 {
+		cfg.MaxGraphNodes = 0
+	}
 
 	fs := flag.NewFlagSet("gorphan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -279,6 +302,8 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.BoolVar(&cfg.Verbose, "verbose", cfg.Verbose, "print validation diagnostics")
 	fs.StringVar(&cfg.Unresolved, "unresolved", cfg.Unresolved, "unresolved-link mode: fail, warn, report, none")
 	fs.StringVar(&cfg.GraphFormat, "graph", cfg.GraphFormat, "graph export mode: none, dot, mermaid")
+	fs.IntVar(&cfg.Workers, "workers", cfg.Workers, "max concurrent graph build workers (0 uses GOMAXPROCS)")
+	fs.IntVar(&cfg.MaxGraphNodes, "max-graph-nodes", cfg.MaxGraphNodes, "max nodes to render for graph export (0 disables limit)")
 	fs.StringVar(&cfg.ConfigPath, "config", cfg.ConfigPath, "optional config file path")
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: gorphan --root <file.md> [--dir <directory>] [options]")
@@ -322,6 +347,12 @@ func validateAndNormalize(cfg *config) error {
 	cfg.GraphFormat = strings.ToLower(strings.TrimSpace(cfg.GraphFormat))
 	if cfg.GraphFormat != "none" && cfg.GraphFormat != "dot" && cfg.GraphFormat != "mermaid" {
 		return fmt.Errorf("--graph must be one of: none, dot, mermaid")
+	}
+	if cfg.Workers < 0 {
+		return fmt.Errorf("--workers must be >= 0")
+	}
+	if cfg.MaxGraphNodes < 0 {
+		return fmt.Errorf("--max-graph-nodes must be >= 0")
 	}
 
 	dirAbs, err := filepath.Abs(cfg.Dir)
