@@ -7,11 +7,14 @@ if ! command -v gofmt >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "pre-commit: running gofmt -w ."
-gofmt -w .
-
-echo "pre-commit: staging gofmt updates"
-git add -A
+echo "pre-commit: checking gofmt"
+unformatted="$(gofmt -l .)"
+if [ -n "$unformatted" ]; then
+  echo "pre-commit: files must be gofmt-formatted:" >&2
+  echo "$unformatted" >&2
+  echo "pre-commit: run 'gofmt -w .' and re-commit" >&2
+  exit 1
+fi
 
 LINT_CMD=""
 if command -v golangci-lint >/dev/null 2>&1; then
@@ -27,4 +30,4 @@ fi
 echo "pre-commit: running ${LINT_CMD} run"
 "$LINT_CMD" run
 
-echo "pre-commit: checks passed"
+echo "pre-commit: lint checks passed"

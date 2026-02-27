@@ -51,7 +51,7 @@ git config core.hooksPath .githooks
 Run before opening a PR:
 
 ```bash
-gofmt -w .
+gofmt -l .
 golangci-lint run
 go test ./...
 ```

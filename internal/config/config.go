@@ -73,10 +73,12 @@ func parseYAML(content string) (FileConfig, error) {
 			continue
 		}
 		if strings.HasPrefix(line, "- ") {
-			if currentList == "ignore" {
-				cfg.Ignore = append(cfg.Ignore, strings.TrimSpace(strings.TrimPrefix(line, "- ")))
-			} else if currentList == "ignore-check-files" {
-				cfg.IgnoreCheckFiles = append(cfg.IgnoreCheckFiles, strings.TrimSpace(strings.TrimPrefix(line, "- ")))
+			item := strings.TrimSpace(strings.TrimPrefix(line, "- "))
+			switch currentList {
+			case "ignore":
+				cfg.Ignore = append(cfg.Ignore, item)
+			case "ignore-check-files":
+				cfg.IgnoreCheckFiles = append(cfg.IgnoreCheckFiles, item)
 			}
 			continue
 		}
