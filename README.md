@@ -85,7 +85,7 @@ Action outputs:
 ## Quick Start
 
 ```bash
-./gorphan --root docs/index.md --dir docs
+./gorphan --root docs/architecture.md --dir docs
 ```
 
 `--dir` is optional and defaults to the current directory.
@@ -112,13 +112,13 @@ gorphan --root <root.md> [--dir <path>] [options]
 Default text output:
 
 ```bash
-gorphan --root docs/index.md --dir docs
+gorphan --root docs/architecture.md --dir docs
 ```
 
 JSON output for CI:
 
 ```bash
-gorphan --root docs/index.md --dir docs --format json
+gorphan --root docs/architecture.md --dir docs --format json
 ```
 
 Use current directory:
@@ -130,20 +130,20 @@ gorphan --root AGENT.md
 Report unresolved links in output:
 
 ```bash
-gorphan --root docs/index.md --dir docs --unresolved report
+gorphan --root docs/architecture.md --dir docs --unresolved report
 ```
 
 Suppress unresolved warnings:
 
 ```bash
-gorphan --root docs/index.md --dir docs --unresolved none
+gorphan --root docs/architecture.md --dir docs --unresolved none
 ```
 
 Export graph:
 
 ```bash
-gorphan --root docs/index.md --dir docs --graph dot
-gorphan --root docs/index.md --dir docs --graph mermaid
+gorphan --root docs/architecture.md --dir docs --graph dot
+gorphan --root docs/architecture.md --dir docs --graph mermaid
 ```
 
 ## Output and Exit Codes
@@ -171,7 +171,7 @@ If `.gorphan.yaml` exists in the current working directory, it is used as defaul
 CLI flags always win over config values.
 
 ```yaml
-root: docs/index.md
+root: docs/architecture.md
 dir: docs
 ext: .md,.markdown
 ignore:
@@ -195,6 +195,7 @@ Run local quality checks:
 
 ```bash
 gofmt -w .
+# install first: https://golangci-lint.run/welcome/install/
 golangci-lint run
 go test ./...
 ```
