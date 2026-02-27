@@ -37,6 +37,15 @@ git config core.hooksPath .githooks
 3. Update docs when behavior, flags, or output changes.
 4. Keep commit history clean and meaningful.
 
+## Documentation Index
+- Keep `AGENT.md` updated whenever a Markdown document is added, moved, or removed.
+- Treat `AGENT.md` as the navigation entry point for humans and tooling.
+
+## Workflow Rules
+- Always create a git commit immediately after completing each implementation phase.
+- After making a change, commit the change.
+- Always add or update tests when implementing a new feature or fixing a bug.
+
 ## Quality Checklist
 
 Run before opening a PR:
