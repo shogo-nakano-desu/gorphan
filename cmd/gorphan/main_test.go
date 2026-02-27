@@ -7,12 +7,14 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"gorphan/internal/testutil"
 )
 
 func TestParseArgsAndValidate_Success(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "docs", "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	cfg, err := parseArgs([]string{"--root", root, "--dir", filepath.Join(dir, "docs"), "--ignore", "drafts", "--format", "json"}, &bytes.Buffer{})
 	if err != nil {
@@ -33,7 +35,7 @@ func TestParseArgsAndValidate_Success(t *testing.T) {
 func TestParseArgsAndValidate_DefaultDirCurrentDirectory(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -65,7 +67,7 @@ func TestParseArgsAndValidate_RootOutsideDir(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
 	scanDir := filepath.Join(dir, "docs")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 	if err := os.MkdirAll(scanDir, 0o755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
@@ -79,7 +81,7 @@ func TestParseArgsAndValidate_RootOutsideDir(t *testing.T) {
 func TestParseArgs_WorkersFlag(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	cfg, err := parseArgs([]string{"--root", root, "--dir", dir, "--workers", "3"}, &bytes.Buffer{})
 	if err != nil {
@@ -93,7 +95,7 @@ func TestParseArgs_WorkersFlag(t *testing.T) {
 func TestParseArgs_WorkersFlagRejectsNegative(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	_, err := parseArgs([]string{"--root", root, "--dir", dir, "--workers", "-1"}, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "--workers must be >= 0") {
@@ -104,7 +106,7 @@ func TestParseArgs_WorkersFlagRejectsNegative(t *testing.T) {
 func TestParseArgs_MaxGraphNodesRejectsNegative(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	_, err := parseArgs([]string{"--root", root, "--dir", dir, "--max-graph-nodes", "-1"}, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "--max-graph-nodes must be >= 0") {
@@ -117,8 +119,8 @@ func TestRun_ValidInput(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	child := filepath.Join(docs, "child.md")
-	mustWrite(t, root, "[child](./child.md)")
-	mustWrite(t, child, "# child")
+	testutil.MustWrite(t, root, "[child](./child.md)")
+	testutil.MustWrite(t, child, "# child")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -144,8 +146,8 @@ func TestRun_ValidInputWithoutDir(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
 	child := filepath.Join(dir, "child.md")
-	mustWrite(t, root, "[child](./child.md)")
-	mustWrite(t, child, "# child")
+	testutil.MustWrite(t, root, "[child](./child.md)")
+	testutil.MustWrite(t, child, "# child")
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -170,7 +172,7 @@ func TestRun_ValidInputWithoutDir(t *testing.T) {
 func TestRun_InvalidFormat(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -187,7 +189,7 @@ func TestRun_RootExcludedByIgnore_Fails(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -205,8 +207,8 @@ func TestRun_OrphansReturnExitCode1(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	orphan := filepath.Join(docs, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -227,8 +229,8 @@ func TestRun_JSONFormat(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	orphan := filepath.Join(docs, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -249,7 +251,7 @@ func TestRun_DefaultUnresolvedFailMode(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
-	mustWrite(t, root, "[missing](./missing.md)")
+	testutil.MustWrite(t, root, "[missing](./missing.md)")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -266,7 +268,7 @@ func TestRun_UnresolvedReportMode(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
-	mustWrite(t, root, "[missing](./missing.md)")
+	testutil.MustWrite(t, root, "[missing](./missing.md)")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -286,7 +288,7 @@ func TestRun_UnresolvedWarnMode(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
-	mustWrite(t, root, "[missing](./missing.md)")
+	testutil.MustWrite(t, root, "[missing](./missing.md)")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -304,8 +306,8 @@ func TestRun_IgnoreCheckFileByBasename(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	ignoredOrphan := filepath.Join(docs, "private.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, ignoredOrphan, "# private")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, ignoredOrphan, "# private")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -323,8 +325,8 @@ func TestRun_IgnoreCheckFileByRelativePath(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	ignoredOrphan := filepath.Join(docs, "drafts", "private.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, ignoredOrphan, "# private")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, ignoredOrphan, "# private")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -342,8 +344,8 @@ func TestRun_GraphDotMode(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	child := filepath.Join(docs, "child.md")
-	mustWrite(t, root, "[child](./child.md)")
-	mustWrite(t, child, "# child")
+	testutil.MustWrite(t, root, "[child](./child.md)")
+	testutil.MustWrite(t, child, "# child")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -361,8 +363,8 @@ func TestRun_GraphExportSkippedWhenNodeLimitExceeded(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	child := filepath.Join(docs, "child.md")
-	mustWrite(t, root, "[child](./child.md)")
-	mustWrite(t, child, "# child")
+	testutil.MustWrite(t, root, "[child](./child.md)")
+	testutil.MustWrite(t, child, "# child")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -382,7 +384,7 @@ func TestParseArgs_ConfigAndFlagOverride(t *testing.T) {
 	dir := t.TempDir()
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
-	mustWrite(t, root, "# root")
+	testutil.MustWrite(t, root, "# root")
 	cfgPath := filepath.Join(dir, ".gorphan.yaml")
 	cfgContent := "root: docs/index.md\ndir: docs\nignore:\n  - drafts\nignore-check-files:\n  - private.md\nformat: json\nunresolved: report\ngraph: mermaid\n"
 	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
@@ -416,15 +418,5 @@ func TestParseArgs_ConfigAndFlagOverride(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cfg.Ignore, []string{"drafts", "archive/*"}) {
 		t.Fatalf("unexpected merged ignore list: %#v", cfg.Ignore)
-	}
-}
-
-func mustWrite(t *testing.T, path, content string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir failed: %v", err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write failed: %v", err)
 	}
 }

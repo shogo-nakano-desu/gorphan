@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"gorphan/internal/pathutil"
 )
 
 type Options struct {
@@ -20,29 +22,7 @@ type ignoreMatcher struct {
 }
 
 func NormalizeExtensions(raw string) []string {
-	parts := strings.Split(raw, ",")
-	seen := make(map[string]struct{}, len(parts))
-	exts := make([]string, 0, len(parts))
-
-	for _, part := range parts {
-		ext := strings.ToLower(strings.TrimSpace(part))
-		if ext == "" {
-			continue
-		}
-		if !strings.HasPrefix(ext, ".") {
-			ext = "." + ext
-		}
-		if _, ok := seen[ext]; ok {
-			continue
-		}
-		seen[ext] = struct{}{}
-		exts = append(exts, ext)
-	}
-
-	if len(exts) == 0 {
-		return []string{".md", ".markdown"}
-	}
-	return exts
+	return pathutil.NormalizeExtensions(raw)
 }
 
 func Scan(opts Options) ([]string, error) {
@@ -56,15 +36,7 @@ func Scan(opts Options) ([]string, error) {
 	}
 	absDir = filepath.Clean(absDir)
 
-	extSet := make(map[string]struct{}, len(opts.Extensions))
-	for _, ext := range opts.Extensions {
-		extSet[strings.ToLower(ext)] = struct{}{}
-	}
-	if len(extSet) == 0 {
-		for _, ext := range NormalizeExtensions("") {
-			extSet[ext] = struct{}{}
-		}
-	}
+	extSet := pathutil.ExtensionSet(opts.Extensions)
 	ignore := compileIgnoreRules(opts.Ignore)
 
 	files := make([]string, 0)

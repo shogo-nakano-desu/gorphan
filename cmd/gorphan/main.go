@@ -11,6 +11,7 @@ import (
 
 	configpkg "gorphan/internal/config"
 	"gorphan/internal/graph"
+	"gorphan/internal/pathutil"
 	"gorphan/internal/report"
 	"gorphan/internal/scanner"
 )
@@ -41,205 +42,219 @@ type config struct {
 	ConfigPath       string
 }
 
+type runState struct {
+	cfg              config
+	extensions       []string
+	files            []string
+	linkGraph        *graph.Graph
+	analysis         *graph.Analysis
+	warnings         []string
+	graphText        string
+	unresolvedFailed bool
+}
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
 func run(args []string, stdout io.Writer, stderr io.Writer) int {
-	writef := func(w io.Writer, format string, a ...any) error {
-		_, err := fmt.Fprintf(w, format, a...)
-		return err
-	}
-
 	cfg, err := parseArgs(args, stderr)
 	if err != nil {
 		return 2
 	}
-	extensions := scanner.NormalizeExtensions(cfg.Ext)
 
+	state := &runState{cfg: cfg, extensions: scanner.NormalizeExtensions(cfg.Ext)}
+	if err := state.scanFiles(); err != nil {
+		return writeRunError(stderr, err)
+	}
+	if err := state.buildAndAnalyzeGraph(); err != nil {
+		return writeRunError(stderr, err)
+	}
+	if err := state.postProcessOrphans(); err != nil {
+		return writeRunError(stderr, err)
+	}
+	if err := state.prepareGraphText(stderr); err != nil {
+		return writeRunError(stderr, err)
+	}
+	if err := state.renderVerbose(stdout); err != nil {
+		return 2
+	}
+	if err := state.applyWarningPolicy(stderr); err != nil {
+		return 2
+	}
+	if err := state.renderReport(stdout); err != nil {
+		return 2
+	}
+	return state.exitCode()
+}
+
+func writeRunError(stderr io.Writer, err error) int {
+	if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
+		return 2
+	}
+	return 2
+}
+
+func (s *runState) scanFiles() error {
 	files, err := scanner.Scan(scanner.Options{
-		Dir:        cfg.Dir,
-		Extensions: extensions,
-		Ignore:     cfg.Ignore,
+		Dir:        s.cfg.Dir,
+		Extensions: s.extensions,
+		Ignore:     s.cfg.Ignore,
 	})
 	if err != nil {
-		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-			return 2
-		}
-		return 2
+		return err
 	}
+	s.files = files
+	return nil
+}
 
+func (s *runState) buildAndAnalyzeGraph() error {
 	linkGraph, err := graph.Build(graph.Options{
-		Root:       cfg.Root,
-		ScanDir:    cfg.Dir,
-		Files:      files,
-		Extensions: extensions,
-		MaxWorkers: cfg.Workers,
+		Root:       s.cfg.Root,
+		ScanDir:    s.cfg.Dir,
+		Files:      s.files,
+		Extensions: s.extensions,
+		MaxWorkers: s.cfg.Workers,
 	})
 	if err != nil {
-		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-			return 2
-		}
-		return 2
+		return err
 	}
-	analysis, err := graph.Analyze(linkGraph, cfg.Dir, files)
+	analysis, err := graph.Analyze(linkGraph, s.cfg.Dir, s.files)
 	if err != nil {
-		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-			return 2
-		}
-		return 2
+		return err
 	}
-	analysis.Orphans, err = filterIgnoredCheckFiles(cfg.Dir, analysis.Orphans, cfg.IgnoreCheckFiles)
+	s.linkGraph = linkGraph
+	s.analysis = analysis
+	return nil
+}
+
+func (s *runState) postProcessOrphans() error {
+	orphans, err := filterIgnoredCheckFiles(s.cfg.Dir, s.analysis.Orphans, s.cfg.IgnoreCheckFiles)
 	if err != nil {
-		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-			return 2
-		}
-		return 2
+		return err
 	}
-	sort.Strings(analysis.Orphans)
-	analysis.OrphansRelative, err = toRelativeSlash(cfg.Dir, analysis.Orphans)
+	sort.Strings(orphans)
+	relative, err := toRelativeSlash(s.cfg.Dir, orphans)
 	if err != nil {
-		if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-			return 2
-		}
-		return 2
+		return err
 	}
-	graphText := ""
-	graphNodeCount := len(linkGraph.Adjacency)
-	graphLimited := cfg.GraphFormat != "none" && cfg.MaxGraphNodes > 0 && graphNodeCount > cfg.MaxGraphNodes
+	s.analysis.Orphans = orphans
+	s.analysis.OrphansRelative = relative
+	return nil
+}
+
+func (s *runState) prepareGraphText(stderr io.Writer) error {
+	s.graphText = ""
+	graphNodeCount := len(s.linkGraph.Adjacency)
+	graphLimited := s.cfg.GraphFormat != "none" && s.cfg.MaxGraphNodes > 0 && graphNodeCount > s.cfg.MaxGraphNodes
 	if graphLimited {
-		if _, writeErr := fmt.Fprintf(stderr, "warning: graph export skipped: node count %d exceeds --max-graph-nodes=%d\n", graphNodeCount, cfg.MaxGraphNodes); writeErr != nil {
-			return 2
-		}
-	} else {
-		switch cfg.GraphFormat {
-		case "dot":
-			graphText, err = graph.ExportDOT(linkGraph, cfg.Dir)
-		case "mermaid":
-			graphText, err = graph.ExportMermaid(linkGraph, cfg.Dir)
-		}
-		if err != nil {
-			if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-				return 2
-			}
-			return 2
-		}
+		_, err := fmt.Fprintf(stderr, "warning: graph export skipped: node count %d exceeds --max-graph-nodes=%d\n", graphNodeCount, s.cfg.MaxGraphNodes)
+		return err
 	}
 
-	if cfg.Verbose {
-		totalEdges := 0
-		for _, targets := range linkGraph.Adjacency {
-			totalEdges += len(targets)
-		}
-		if writeErr := writef(stdout, "Validated inputs:\n"); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- root: %s\n", cfg.Root); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- dir: %s\n", cfg.Dir); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- ext: %s\n", cfg.Ext); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- ignore: %v\n", cfg.Ignore); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- ignore-check-files: %v\n", cfg.IgnoreCheckFiles); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- format: %s\n", cfg.Format); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- unresolved: %s\n", cfg.Unresolved); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- graph: %s\n", cfg.GraphFormat); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- max-graph-nodes: %d\n", cfg.MaxGraphNodes); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- workers: %d\n", cfg.Workers); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- scanned markdown files: %d\n", len(files)); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- graph nodes: %d\n", len(linkGraph.Adjacency)); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- graph edges: %d\n", totalEdges); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- reachable files: %d\n", len(analysis.Reachable)); writeErr != nil {
-			return 2
-		}
-		if writeErr := writef(stdout, "- orphan files: %d\n", len(analysis.Orphans)); writeErr != nil {
-			return 2
-		}
-		if _, writeErr := fmt.Fprintln(stdout); writeErr != nil {
-			return 2
-		}
+	var err error
+	switch s.cfg.GraphFormat {
+	case "dot":
+		s.graphText, err = graph.ExportDOT(s.linkGraph, s.cfg.Dir)
+	case "mermaid":
+		s.graphText, err = graph.ExportMermaid(s.linkGraph, s.cfg.Dir)
+	}
+	return err
+}
+
+func (s *runState) renderVerbose(stdout io.Writer) error {
+	if !s.cfg.Verbose {
+		return nil
 	}
 
-	warnings := append([]string(nil), linkGraph.Warnings...)
-	unresolvedFailed := false
-	switch cfg.Unresolved {
+	totalEdges := 0
+	for _, targets := range s.linkGraph.Adjacency {
+		totalEdges += len(targets)
+	}
+
+	lines := []string{
+		"Validated inputs:",
+		fmt.Sprintf("- root: %s", s.cfg.Root),
+		fmt.Sprintf("- dir: %s", s.cfg.Dir),
+		fmt.Sprintf("- ext: %s", s.cfg.Ext),
+		fmt.Sprintf("- ignore: %v", s.cfg.Ignore),
+		fmt.Sprintf("- ignore-check-files: %v", s.cfg.IgnoreCheckFiles),
+		fmt.Sprintf("- format: %s", s.cfg.Format),
+		fmt.Sprintf("- unresolved: %s", s.cfg.Unresolved),
+		fmt.Sprintf("- graph: %s", s.cfg.GraphFormat),
+		fmt.Sprintf("- max-graph-nodes: %d", s.cfg.MaxGraphNodes),
+		fmt.Sprintf("- workers: %d", s.cfg.Workers),
+		fmt.Sprintf("- scanned markdown files: %d", len(s.files)),
+		fmt.Sprintf("- graph nodes: %d", len(s.linkGraph.Adjacency)),
+		fmt.Sprintf("- graph edges: %d", totalEdges),
+		fmt.Sprintf("- reachable files: %d", len(s.analysis.Reachable)),
+		fmt.Sprintf("- orphan files: %d", len(s.analysis.Orphans)),
+		"",
+	}
+
+	_, err := fmt.Fprintln(stdout, strings.Join(lines, "\n"))
+	return err
+}
+
+func (s *runState) applyWarningPolicy(stderr io.Writer) error {
+	s.warnings = append([]string(nil), s.linkGraph.Warnings...)
+	s.unresolvedFailed = false
+
+	switch s.cfg.Unresolved {
 	case "none":
-		warnings = nil
+		s.warnings = nil
 	case "warn":
-		for _, warning := range warnings {
-			if _, writeErr := fmt.Fprintf(stderr, "warning: %s\n", warning); writeErr != nil {
-				return 2
+		for _, warning := range s.warnings {
+			if _, err := fmt.Fprintf(stderr, "warning: %s\n", warning); err != nil {
+				return err
 			}
 		}
 	case "fail":
-		if len(warnings) > 0 {
-			unresolvedFailed = true
+		if len(s.warnings) > 0 {
+			s.unresolvedFailed = true
 		}
-		for _, warning := range warnings {
-			if _, writeErr := fmt.Fprintf(stderr, "error: %s\n", warning); writeErr != nil {
-				return 2
+		for _, warning := range s.warnings {
+			if _, err := fmt.Fprintf(stderr, "error: %s\n", warning); err != nil {
+				return err
 			}
 		}
 	case "report":
 		// warnings are emitted in standard report output.
 	}
 
+	return nil
+}
+
+func (s *runState) renderReport(stdout io.Writer) error {
 	rep := report.Result{
-		Root:     cfg.Root,
-		Dir:      cfg.Dir,
-		Orphans:  analysis.OrphansRelative,
-		Warnings: warnings,
-		Graph:    graphText,
+		Root:     s.cfg.Root,
+		Dir:      s.cfg.Dir,
+		Orphans:  s.analysis.OrphansRelative,
+		Warnings: s.warnings,
+		Graph:    s.graphText,
 		Summary: report.Summary{
-			Scanned:   len(files),
-			Reachable: len(analysis.Reachable),
-			Orphans:   len(analysis.Orphans),
+			Scanned:   len(s.files),
+			Reachable: len(s.analysis.Reachable),
+			Orphans:   len(s.analysis.Orphans),
 		},
 	}
 
-	switch cfg.Format {
+	switch s.cfg.Format {
 	case "json":
 		rendered, err := report.RenderJSON(rep)
 		if err != nil {
-			if _, writeErr := fmt.Fprintf(stderr, "error: %v\n", err); writeErr != nil {
-				return 2
-			}
-			return 2
+			return err
 		}
-		if _, writeErr := fmt.Fprintln(stdout, rendered); writeErr != nil {
-			return 2
-		}
+		_, err = fmt.Fprintln(stdout, rendered)
+		return err
 	default:
-		if _, writeErr := fmt.Fprintln(stdout, report.RenderText(rep, cfg.Verbose, cfg.Unresolved == "report", cfg.GraphFormat != "none")); writeErr != nil {
-			return 2
-		}
+		_, err := fmt.Fprintln(stdout, report.RenderText(rep, s.cfg.Verbose, s.cfg.Unresolved == "report", s.cfg.GraphFormat != "none"))
+		return err
 	}
+}
 
-	if len(analysis.Orphans) > 0 || unresolvedFailed {
+func (s *runState) exitCode() int {
+	if len(s.analysis.Orphans) > 0 || s.unresolvedFailed {
 		return 1
 	}
 	return 0
@@ -355,11 +370,10 @@ func validateAndNormalize(cfg *config) error {
 		return fmt.Errorf("--max-graph-nodes must be >= 0")
 	}
 
-	dirAbs, err := filepath.Abs(cfg.Dir)
+	dirAbs, err := pathutil.NormalizeAbs(cfg.Dir)
 	if err != nil {
 		return fmt.Errorf("resolve --dir: %w", err)
 	}
-	dirAbs = filepath.Clean(dirAbs)
 
 	dirInfo, err := os.Stat(dirAbs)
 	if err != nil {
@@ -369,11 +383,10 @@ func validateAndNormalize(cfg *config) error {
 		return fmt.Errorf("--dir must be a directory: %s", dirAbs)
 	}
 
-	rootAbs, err := filepath.Abs(cfg.Root)
+	rootAbs, err := pathutil.NormalizeAbs(cfg.Root)
 	if err != nil {
 		return fmt.Errorf("resolve --root: %w", err)
 	}
-	rootAbs = filepath.Clean(rootAbs)
 
 	rootInfo, err := os.Stat(rootAbs)
 	if err != nil {
@@ -401,11 +414,10 @@ func filterIgnoredCheckFiles(scanDir string, orphanFiles []string, rules []strin
 		return orphanFiles, nil
 	}
 
-	scanDirAbs, err := filepath.Abs(scanDir)
+	scanDirAbs, err := pathutil.NormalizeAbs(scanDir)
 	if err != nil {
 		return nil, fmt.Errorf("resolve scan dir: %w", err)
 	}
-	scanDirAbs = filepath.Clean(scanDirAbs)
 
 	filtered := make([]string, 0, len(orphanFiles))
 	for _, orphan := range orphanFiles {
@@ -422,11 +434,10 @@ func filterIgnoredCheckFiles(scanDir string, orphanFiles []string, rules []strin
 }
 
 func isIgnoredCheckFile(scanDir, file string, rules []string) (bool, error) {
-	fileAbs, err := filepath.Abs(file)
+	fileAbs, err := pathutil.NormalizeAbs(file)
 	if err != nil {
 		return false, fmt.Errorf("resolve orphan file path %q: %w", file, err)
 	}
-	fileAbs = filepath.Clean(fileAbs)
 	rel, err := filepath.Rel(scanDir, fileAbs)
 	if err != nil {
 		return false, fmt.Errorf("resolve orphan file relative path %q: %w", fileAbs, err)
@@ -467,24 +478,23 @@ func normalizeIgnoreCheckRule(scanDir, rule string) string {
 }
 
 func toRelativeSlash(baseDir string, files []string) ([]string, error) {
-	baseAbs, err := filepath.Abs(baseDir)
+	baseAbs, err := pathutil.NormalizeAbs(baseDir)
 	if err != nil {
 		return nil, fmt.Errorf("resolve base directory: %w", err)
 	}
-	baseAbs = filepath.Clean(baseAbs)
 
-	relative := make([]string, 0, len(files))
+	absolute := make([]string, 0, len(files))
 	for _, file := range files {
-		abs, err := filepath.Abs(file)
+		abs, err := pathutil.NormalizeAbs(file)
 		if err != nil {
 			return nil, fmt.Errorf("resolve file path %q: %w", file, err)
 		}
-		abs = filepath.Clean(abs)
-		rel, err := filepath.Rel(baseAbs, abs)
-		if err != nil {
-			return nil, fmt.Errorf("convert orphan path to relative: %w", err)
-		}
-		relative = append(relative, filepath.ToSlash(rel))
+		absolute = append(absolute, abs)
+	}
+
+	relative, err := pathutil.RelativeSlashMany(baseAbs, absolute)
+	if err != nil {
+		return nil, fmt.Errorf("convert orphan path to relative: %w", err)
 	}
 	return relative, nil
 }

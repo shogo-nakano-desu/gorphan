@@ -3,11 +3,12 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gorphan/internal/testutil"
 )
 
 func TestCLIEndToEnd_NoOrphans(t *testing.T) {
@@ -15,8 +16,8 @@ func TestCLIEndToEnd_NoOrphans(t *testing.T) {
 	docs := filepath.Join(t.TempDir(), "docs")
 	root := filepath.Join(docs, "index.md")
 	child := filepath.Join(docs, "child.md")
-	mustWrite(t, root, "[child](./child.md)")
-	mustWrite(t, child, "# child")
+	testutil.MustWrite(t, root, "[child](./child.md)")
+	testutil.MustWrite(t, child, "# child")
 
 	stdout, stderr, code := runCLI(t, repoRoot, "--root", root, "--dir", docs)
 	if code != 0 {
@@ -32,8 +33,8 @@ func TestCLIEndToEnd_WithOrphansJSON(t *testing.T) {
 	docs := filepath.Join(t.TempDir(), "docs")
 	root := filepath.Join(docs, "index.md")
 	orphan := filepath.Join(docs, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	stdout, stderr, code := runCLI(t, repoRoot, "--root", root, "--dir", docs, "--format", "json")
 	if code != 1 {
@@ -85,14 +86,4 @@ func mustRepoRoot(t *testing.T) string {
 		t.Fatalf("resolve repo root failed: %v", err)
 	}
 	return root
-}
-
-func mustWrite(t *testing.T, path, content string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir failed: %v", err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write failed: %v", err)
-	}
 }

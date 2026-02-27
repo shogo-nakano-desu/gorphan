@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gorphan/internal/testutil"
 )
 
 func TestGolden_TextOutput(t *testing.T) {
@@ -13,8 +15,8 @@ func TestGolden_TextOutput(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	orphan := filepath.Join(docs, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -35,8 +37,8 @@ func TestGolden_JSONOutput(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	orphan := filepath.Join(docs, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

@@ -23,6 +23,17 @@ type FileConfig struct {
 	Graph            string
 }
 
+type yamlToken struct {
+	isList bool
+	key    string
+	value  string
+}
+
+type yamlParser struct {
+	cfg         FileConfig
+	currentList string
+}
+
 func FindConfigArg(args []string) (path string, explicit bool, err error) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -63,27 +74,34 @@ func Load(path string, required bool) (FileConfig, bool, error) {
 }
 
 func parseYAML(content string) (FileConfig, error) {
-	var cfg FileConfig
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	var currentList string
+	tokens, err := tokenizeYAML(content)
+	if err != nil {
+		return FileConfig{}, err
+	}
 
+	p := yamlParser{}
+	for _, token := range tokens {
+		if err := p.apply(token); err != nil {
+			return FileConfig{}, err
+		}
+	}
+	return p.cfg, nil
+}
+
+func tokenizeYAML(content string) ([]yamlToken, error) {
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	tokens := make([]yamlToken, 0)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+
 		if strings.HasPrefix(line, "- ") {
-			item := strings.TrimSpace(strings.TrimPrefix(line, "- "))
-			switch currentList {
-			case "ignore":
-				cfg.Ignore = append(cfg.Ignore, item)
-			case "ignore-check-files":
-				cfg.IgnoreCheckFiles = append(cfg.IgnoreCheckFiles, item)
-			}
+			tokens = append(tokens, yamlToken{isList: true, value: strings.TrimSpace(strings.TrimPrefix(line, "- "))})
 			continue
 		}
 
-		currentList = ""
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) != 2 {
 			continue
@@ -91,43 +109,65 @@ func parseYAML(content string) (FileConfig, error) {
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 		value = strings.Trim(value, `"'`)
-
-		switch key {
-		case "root":
-			cfg.Root = value
-		case "dir":
-			cfg.Dir = value
-		case "ext":
-			cfg.Ext = value
-		case "ignore":
-			currentList = "ignore"
-			if value != "" {
-				cfg.Ignore = append(cfg.Ignore, value)
-			}
-		case "ignore-check-files":
-			currentList = "ignore-check-files"
-			if value != "" {
-				cfg.IgnoreCheckFiles = append(cfg.IgnoreCheckFiles, value)
-			}
-		case "format":
-			cfg.Format = value
-		case "verbose":
-			if value == "" {
-				continue
-			}
-			b, err := strconv.ParseBool(value)
-			if err != nil {
-				return FileConfig{}, fmt.Errorf("invalid verbose value: %s", value)
-			}
-			cfg.Verbose = &b
-		case "unresolved":
-			cfg.Unresolved = value
-		case "graph":
-			cfg.Graph = value
-		}
+		tokens = append(tokens, yamlToken{key: key, value: value})
 	}
 	if err := scanner.Err(); err != nil {
-		return FileConfig{}, err
+		return nil, err
 	}
-	return cfg, nil
+	return tokens, nil
+}
+
+func (p *yamlParser) apply(token yamlToken) error {
+	if token.isList {
+		return p.applyListItem(token.value)
+	}
+	p.currentList = ""
+
+	switch token.key {
+	case "root":
+		p.cfg.Root = token.value
+	case "dir":
+		p.cfg.Dir = token.value
+	case "ext":
+		p.cfg.Ext = token.value
+	case "ignore":
+		p.currentList = "ignore"
+		if token.value != "" {
+			p.cfg.Ignore = append(p.cfg.Ignore, token.value)
+		}
+	case "ignore-check-files":
+		p.currentList = "ignore-check-files"
+		if token.value != "" {
+			p.cfg.IgnoreCheckFiles = append(p.cfg.IgnoreCheckFiles, token.value)
+		}
+	case "format":
+		p.cfg.Format = token.value
+	case "verbose":
+		if token.value == "" {
+			return nil
+		}
+		b, err := strconv.ParseBool(token.value)
+		if err != nil {
+			return fmt.Errorf("invalid verbose value: %s", token.value)
+		}
+		p.cfg.Verbose = &b
+	case "unresolved":
+		p.cfg.Unresolved = token.value
+	case "graph":
+		p.cfg.Graph = token.value
+	}
+
+	return nil
+}
+
+func (p *yamlParser) applyListItem(item string) error {
+	switch p.currentList {
+	case "ignore":
+		p.cfg.Ignore = append(p.cfg.Ignore, item)
+	case "ignore-check-files":
+		p.cfg.IgnoreCheckFiles = append(p.cfg.IgnoreCheckFiles, item)
+	default:
+		// Keep backward-compatible behavior: list items outside known list contexts are ignored.
+	}
+	return nil
 }

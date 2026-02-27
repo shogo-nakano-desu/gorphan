@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gorphan/internal/testutil"
 )
 
 func TestIntegration_NoOrphans(t *testing.T) {
@@ -13,8 +15,8 @@ func TestIntegration_NoOrphans(t *testing.T) {
 	docs := filepath.Join(dir, "docs")
 	root := filepath.Join(docs, "index.md")
 	a := filepath.Join(docs, "a.md")
-	mustWrite(t, root, "[a](./a.md)")
-	mustWrite(t, a, "# a")
+	testutil.MustWrite(t, root, "[a](./a.md)")
+	testutil.MustWrite(t, a, "# a")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -33,9 +35,9 @@ func TestIntegration_MultipleOrphans(t *testing.T) {
 	root := filepath.Join(docs, "index.md")
 	o1 := filepath.Join(docs, "o1.md")
 	o2 := filepath.Join(docs, "o2.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, o1, "# orphan1")
-	mustWrite(t, o2, "# orphan2")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, o1, "# orphan1")
+	testutil.MustWrite(t, o2, "# orphan2")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -56,11 +58,11 @@ func TestIntegration_CyclicLinksWithDisconnectedComponent(t *testing.T) {
 	b := filepath.Join(docs, "b.md")
 	c := filepath.Join(docs, "c.md")
 	d := filepath.Join(docs, "d.md")
-	mustWrite(t, root, "[a](./a.md)")
-	mustWrite(t, a, "[b](./b.md)")
-	mustWrite(t, b, "[a](./a.md)")
-	mustWrite(t, c, "[d](./d.md)")
-	mustWrite(t, d, "# d")
+	testutil.MustWrite(t, root, "[a](./a.md)")
+	testutil.MustWrite(t, a, "[b](./b.md)")
+	testutil.MustWrite(t, b, "[a](./a.md)")
+	testutil.MustWrite(t, c, "[d](./d.md)")
+	testutil.MustWrite(t, d, "# d")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

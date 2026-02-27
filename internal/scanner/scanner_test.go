@@ -1,10 +1,11 @@
 package scanner
 
 import (
-	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"gorphan/internal/testutil"
 )
 
 func TestNormalizeExtensions(t *testing.T) {
@@ -17,12 +18,12 @@ func TestNormalizeExtensions(t *testing.T) {
 
 func TestScan_WithIgnoreRules(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "index.md"), "# index")
-	mustWrite(t, filepath.Join(dir, "guide", "intro.md"), "# intro")
-	mustWrite(t, filepath.Join(dir, "guide", "notes.markdown"), "# notes")
-	mustWrite(t, filepath.Join(dir, "guide", "skip.md"), "# skip")
-	mustWrite(t, filepath.Join(dir, "assets", "readme.md"), "# assets")
-	mustWrite(t, filepath.Join(dir, "README.txt"), "not markdown")
+	testutil.MustWrite(t, filepath.Join(dir, "index.md"), "# index")
+	testutil.MustWrite(t, filepath.Join(dir, "guide", "intro.md"), "# intro")
+	testutil.MustWrite(t, filepath.Join(dir, "guide", "notes.markdown"), "# notes")
+	testutil.MustWrite(t, filepath.Join(dir, "guide", "skip.md"), "# skip")
+	testutil.MustWrite(t, filepath.Join(dir, "assets", "readme.md"), "# assets")
+	testutil.MustWrite(t, filepath.Join(dir, "README.txt"), "not markdown")
 
 	files, err := Scan(Options{
 		Dir:        dir,
@@ -45,8 +46,8 @@ func TestScan_WithIgnoreRules(t *testing.T) {
 
 func TestScan_IgnoreDirectoryPrefix(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "docs", "index.md"), "# docs")
-	mustWrite(t, filepath.Join(dir, "drafts", "a.md"), "# a")
+	testutil.MustWrite(t, filepath.Join(dir, "docs", "index.md"), "# docs")
+	testutil.MustWrite(t, filepath.Join(dir, "drafts", "a.md"), "# a")
 
 	files, err := Scan(Options{
 		Dir:        dir,
@@ -60,15 +61,5 @@ func TestScan_IgnoreDirectoryPrefix(t *testing.T) {
 	want := []string{filepath.Join(dir, "docs", "index.md")}
 	if !reflect.DeepEqual(files, want) {
 		t.Fatalf("unexpected files\nwant: %#v\n got: %#v", want, files)
-	}
-}
-
-func mustWrite(t *testing.T, path, content string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir failed: %v", err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write failed: %v", err)
 	}
 }

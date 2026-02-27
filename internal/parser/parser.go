@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"gorphan/internal/pathutil"
 )
 
 var (
@@ -16,7 +18,7 @@ var (
 )
 
 func ExtractLocalMarkdownLinks(content string, extensions []string) []string {
-	extSet := buildExtSet(extensions)
+	extSet := pathutil.ExtensionSet(extensions)
 	refDefs := parseReferenceDefinitions(content)
 	seen := make(map[string]struct{})
 	links := make([]string, 0)
@@ -201,23 +203,4 @@ func isExternalTarget(value string) bool {
 	return strings.HasPrefix(lower, "http://") ||
 		strings.HasPrefix(lower, "https://") ||
 		strings.HasPrefix(lower, "mailto:")
-}
-
-func buildExtSet(extensions []string) map[string]struct{} {
-	set := make(map[string]struct{}, len(extensions))
-	for _, ext := range extensions {
-		normalized := strings.ToLower(strings.TrimSpace(ext))
-		if normalized == "" {
-			continue
-		}
-		if !strings.HasPrefix(normalized, ".") {
-			normalized = "." + normalized
-		}
-		set[normalized] = struct{}{}
-	}
-	if len(set) == 0 {
-		set[".md"] = struct{}{}
-		set[".markdown"] = struct{}{}
-	}
-	return set
 }

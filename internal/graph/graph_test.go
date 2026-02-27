@@ -1,11 +1,12 @@
 package graph
 
 import (
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"gorphan/internal/testutil"
 )
 
 func TestBuild_GraphFiltersTargets(t *testing.T) {
@@ -15,10 +16,10 @@ func TestBuild_GraphFiltersTargets(t *testing.T) {
 	b := filepath.Join(dir, "b.md")
 	outside := filepath.Join(filepath.Dir(dir), "outside.md")
 
-	mustWrite(t, root, "[a](./a.md) [outside](../outside.md) [missing](./missing.md) [text](./note.txt)")
-	mustWrite(t, a, "[b](./b.md)")
-	mustWrite(t, b, "[a](./a.md)")
-	mustWrite(t, outside, "# outside")
+	testutil.MustWrite(t, root, "[a](./a.md) [outside](../outside.md) [missing](./missing.md) [text](./note.txt)")
+	testutil.MustWrite(t, a, "[b](./b.md)")
+	testutil.MustWrite(t, b, "[a](./a.md)")
+	testutil.MustWrite(t, outside, "# outside")
 
 	g, err := Build(Options{
 		Root:       root,
@@ -60,10 +61,10 @@ func TestAnalyze_ReachableAndOrphans(t *testing.T) {
 	a := filepath.Join(dir, "a.md")
 	b := filepath.Join(dir, "b.md")
 	orphan := filepath.Join(dir, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, a, "# a")
-	mustWrite(t, b, "# b")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, a, "# a")
+	testutil.MustWrite(t, b, "# b")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	g := &Graph{
 		Root: root,
@@ -100,8 +101,8 @@ func TestAnalyze_RootNotInInventory_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
 	other := filepath.Join(dir, "other.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, other, "# other")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, other, "# other")
 
 	g := &Graph{
 		Root:      root,
@@ -118,8 +119,8 @@ func TestAnalyze_HandlesRootWithNoEdges(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "index.md")
 	orphan := filepath.Join(dir, "orphan.md")
-	mustWrite(t, root, "# root")
-	mustWrite(t, orphan, "# orphan")
+	testutil.MustWrite(t, root, "# root")
+	testutil.MustWrite(t, orphan, "# orphan")
 
 	g := &Graph{
 		Root:      root,
@@ -177,15 +178,5 @@ func TestExportMermaid(t *testing.T) {
 	}
 	if !strings.Contains(out, `"index.md" --> "a.md"`) {
 		t.Fatalf("unexpected mermaid output: %s", out)
-	}
-}
-
-func mustWrite(t *testing.T, path, content string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir failed: %v", err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write failed: %v", err)
 	}
 }
